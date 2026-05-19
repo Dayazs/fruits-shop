@@ -17,9 +17,9 @@ export const register = async (req: Request, res: Response) => {
     const { username, password, mobile } = req.body
     const data = await userService.register(username, password, mobile)
 
-    res.json({ code: 200, msg: '注册成功', data })
+    res.status(200).json({ code: 200, msg: '注册成功', data })
   } catch (err: any) {
-    res.json({ code: 400, msg: err.message })
+    res.status(401).json({ code: 401, msg: err.message })
   }
 }
 
@@ -28,9 +28,9 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { account, password } = req.body
     const data = await userService.login(account, password)
-    res.json({ code: 200, msg: '登录成功', data })
+    res.status(200).json({ code: 200, msg: '登录成功', data })
   } catch (err: any) {
-    res.json({ code: 400, msg: err.message })
+    res.status(401).json({ code: 401, msg: err.message })
   }
 }
 
@@ -39,8 +39,8 @@ export const logout = async (req: Request, res: Response) => {
   try {
     const { userId } = req.body
     const data = await userService.logout(userId)
-    res.json({ code: 200, msg: '登出成功', data })
+    res.status(200).json({ code: 200, msg: '登出成功', data })
   } catch (err: any) {
-    res.json({ code: 400, msg: err.message })
+    res.status(401).json({ code: 401, msg: err.message })
   }
 }
