@@ -2,8 +2,8 @@ import bcrypt from 'bcryptjs'
 import prisma from '../lib/prisma'
 
 async function initAdmin() {
-  const adminUsername = 'admin'
-  const adminPassword = 'admin123'
+  const adminUsername = 'test01'
+  const adminPassword = '123456'
 
   try {
     // 检查管理员是否已存在
