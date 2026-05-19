@@ -32,8 +32,12 @@ model admins {
   username   String   @unique(map: "idx_username") @db.VarChar(255)
   password   String   @db.VarChar(255)
   role_id    Int?
+  avatar     String?  @db.VarChar(255)
   created_at DateTime @db.DateTime(0)
   updated_at DateTime @db.DateTime(0)
+  roles      roles?   @relation(fields: [role_id], references: [id], map: "admins_ibfk_role")
+
+  @@index([role_id], map: "admins_ibfk_role")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -202,6 +206,7 @@ model roles {
   permissions String?  @db.Text
   created_at  DateTime @db.DateTime(0)
   updated_at  DateTime @db.DateTime(0)
+  admins      admins[]
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
