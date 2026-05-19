@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,4 +5,219 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model addresses {
+  id              Int      @id @default(autoincrement())
+  user_id         Int
+  receiver_name   String   @db.VarChar(255)
+  receiver_mobile String   @db.VarChar(255)
+  province        String   @db.VarChar(255)
+  city            String   @db.VarChar(255)
+  district        String   @db.VarChar(255)
+  detail_address  String   @db.VarChar(255)
+  is_default      Int?     @default(0) @db.TinyInt
+  created_at      DateTime @db.DateTime(0)
+  updated_at      DateTime @db.DateTime(0)
+  users           users    @relation(fields: [user_id], references: [id], map: "addresses_ibfk_1")
+  orders          orders[]
+
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model admins {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique(map: "idx_username") @db.VarChar(255)
+  password   String   @db.VarChar(255)
+  role_id    Int?
+  created_at DateTime @db.DateTime(0)
+  updated_at DateTime @db.DateTime(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model banners {
+  id         Int      @id @default(autoincrement())
+  title      String   @db.VarChar(255)
+  image_url  String   @db.VarChar(255)
+  fruit_id   Int?
+  link_url   String?  @db.VarChar(255)
+  sort_order Int?     @default(0)
+  status     Int?     @default(1) @db.TinyInt
+  created_at DateTime @db.DateTime(0)
+  updated_at DateTime @db.DateTime(0)
+  fruits     fruits?  @relation(fields: [fruit_id], references: [id], onDelete: Restrict, map: "banners_ibfk_1")
+
+  @@index([fruit_id], map: "fruit_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model carts {
+  id         Int        @id @default(autoincrement())
+  user_id    Int
+  fruit_id   Int
+  sku_id     Int
+  quantity   Int?       @default(1)
+  created_at DateTime   @db.DateTime(0)
+  updated_at DateTime   @db.DateTime(0)
+  users      users      @relation(fields: [user_id], references: [id], map: "carts_ibfk_1")
+  fruits     fruits     @relation(fields: [fruit_id], references: [id], map: "carts_ibfk_2")
+  fruit_skus fruit_skus @relation(fields: [sku_id], references: [id], map: "carts_ibfk_3")
+
+  @@index([fruit_id], map: "fruit_id")
+  @@index([sku_id], map: "sku_id")
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model categories {
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(255)
+  parent_id  Int?     @default(0)
+  sort_order Int?     @default(0)
+  image      String?  @db.VarChar(255)
+  is_show    Int      @default(1) @db.TinyInt
+  created_at DateTime @db.DateTime(0)
+  updated_at DateTime @db.DateTime(0)
+  fruits     fruits[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model collections {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  fruit_id   Int
+  created_at DateTime @db.DateTime(0)
+  updated_at DateTime @db.DateTime(0)
+  users      users    @relation(fields: [user_id], references: [id], map: "collections_ibfk_1")
+  fruits     fruits   @relation(fields: [fruit_id], references: [id], map: "collections_ibfk_2")
+
+  @@index([fruit_id], map: "fruit_id")
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model fruit_skus {
+  id             Int           @id @default(autoincrement())
+  fruit_id       Int
+  spec_name      String        @db.VarChar(255)
+  weight         Decimal?      @db.Decimal(10, 2)
+  price          Decimal       @db.Decimal(10, 2)
+  original_price Decimal?      @db.Decimal(10, 2)
+  stock          Int           @default(0)
+  sku_code       String?       @db.VarChar(255)
+  sales          Int?          @default(0)
+  image          String?       @db.VarChar(255)
+  created_at     DateTime      @db.DateTime(0)
+  updated_at     DateTime      @db.DateTime(0)
+  carts          carts[]
+  fruits         fruits        @relation(fields: [fruit_id], references: [id], onDelete: Cascade, map: "fruit_skus_ibfk_1")
+  order_items    order_items[]
+
+  @@index([fruit_id], map: "fruit_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model fruits {
+  id          Int           @id @default(autoincrement())
+  name        String        @db.VarChar(255)
+  category_id Int
+  description String?       @db.Text
+  main_image  String?       @db.VarChar(255)
+  images      String?       @db.Text
+  status      Int?          @default(1) @db.TinyInt
+  sort_order  Int?          @default(0)
+  created_at  DateTime      @db.DateTime(0)
+  updated_at  DateTime      @db.DateTime(0)
+  banners     banners[]
+  carts       carts[]
+  collections collections[]
+  fruit_skus  fruit_skus[]
+  categories  categories    @relation(fields: [category_id], references: [id], map: "fruits_ibfk_1")
+  order_items order_items[]
+
+  @@index([category_id], map: "category_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model order_items {
+  id          Int        @id @default(autoincrement())
+  order_id    Int
+  fruit_id    Int
+  sku_id      Int
+  fruit_name  String     @db.VarChar(255)
+  spec_name   String     @db.VarChar(255)
+  price       Decimal    @db.Decimal(10, 2)
+  quantity    Int
+  total_price Decimal    @db.Decimal(10, 2)
+  created_at  DateTime   @db.DateTime(0)
+  updated_at  DateTime   @db.DateTime(0)
+  orders      orders     @relation(fields: [order_id], references: [id], map: "order_items_ibfk_1")
+  fruits      fruits     @relation(fields: [fruit_id], references: [id], map: "order_items_ibfk_2")
+  fruit_skus  fruit_skus @relation(fields: [sku_id], references: [id], map: "order_items_ibfk_3")
+
+  @@index([fruit_id], map: "fruit_id")
+  @@index([order_id], map: "order_id")
+  @@index([sku_id], map: "sku_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model orders {
+  id           Int           @id @default(autoincrement())
+  order_no     String        @unique(map: "idx_order_no") @db.VarChar(255)
+  user_id      Int
+  total_amount Decimal?      @default(0.00) @db.Decimal(10, 2)
+  status       Int?          @default(0) @db.TinyInt
+  address_id   Int
+  remark       String?       @db.VarChar(255)
+  pay_time     DateTime?     @db.DateTime(0)
+  ship_time    DateTime?     @db.DateTime(0)
+  finish_time  DateTime?     @db.DateTime(0)
+  created_at   DateTime      @db.DateTime(0)
+  updated_at   DateTime      @db.DateTime(0)
+  order_items  order_items[]
+  users        users         @relation(fields: [user_id], references: [id], map: "orders_ibfk_1")
+  addresses    addresses     @relation(fields: [address_id], references: [id], map: "orders_ibfk_2")
+
+  @@index([address_id], map: "address_id")
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model permissions {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(255)
+  value        String   @unique(map: "value") @db.VarChar(255)
+  parent_value String?  @db.VarChar(255)
+  description  String?  @db.VarChar(255)
+  created_at   DateTime @db.DateTime(0)
+  updated_at   DateTime @db.DateTime(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model roles {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  permissions String?  @db.Text
+  created_at  DateTime @db.DateTime(0)
+  updated_at  DateTime @db.DateTime(0)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id            Int           @id @default(autoincrement())
+  username      String        @unique(map: "idx_username") @db.VarChar(255)
+  password      String        @db.VarChar(255)
+  email         String?       @db.VarChar(255)
+  mobile        String?       @db.VarChar(255)
+  avatar        String?       @db.VarChar(255)
+  openid        String?       @db.VarChar(64)
+  refresh_token String?       @db.VarChar(500)
+  created_at    DateTime      @db.DateTime(0)
+  updated_at    DateTime      @db.DateTime(0)
+  addresses     addresses[]
+  carts         carts[]
+  collections   collections[]
+  orders        orders[]
 }
