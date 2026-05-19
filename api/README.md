@@ -23,7 +23,8 @@ src
 │  ├─ auth.ts                  // 认证 + 管理员权限
 │  └─ upload.ts                // 文件上传
 ├─ utils/                      // 工具函数
-│  └─ token.ts                 // JWT 生成与校验
+│  ├─ token.ts                 // JWT 生成与校验
+│  └─ file.ts                  // 文件操作（目录创建、移动、清理）
 └─ scripts/                    // 脚本
    └─ init-admin.ts            // 初始化管理员
 ```
@@ -80,24 +81,26 @@ pnpm start
 
 ```
 POST /api/goods/admin/create
+Content-Type: multipart/form-data
 ```
 
 认证：管理员（Bearer Token）
 
-请求体（JSON）：
+##### 上传字段
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | name | string | 是 | 商品名称 |
-| category_id | number | 是 | 分类 ID |
+| category_id | string | 是 | 分类 ID |
 | description | string | 否 | 商品描述 |
-| main_image | string | 否 | 主图 URL |
-| images | string | 否 | 详情图（JSON 数组） |
-| status | number | 否 | 状态：0-下架 1-上架，默认 1 |
-| sort_order | number | 否 | 排序，默认 0 |
-| skus | array | 是 | SKU 列表 |
+| status | string | 否 | 状态：0-下架 1-上架，默认 1 |
+| sort_order | string | 否 | 排序，默认 0 |
+| skus | string | 是 | SKU 列表（JSON 字符串） |
+| main_image | file | 否 | 主图（1 张） |
+| images | file[] | 否 | 副图（多张） |
+| sku_image | file[] | 否 | SKU 图片，按顺序对应 skus 数组 |
 
-SKU 对象：
+##### SKU JSON 结构（skus 字段）
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
@@ -106,43 +109,44 @@ SKU 对象：
 | price | number | 是 | 售价 |
 | original_price | number | 否 | 原价 |
 | stock | number | 是 | 库存 |
-| image | string | 否 | 规格图片 |
 
 `sku_code` 由后端自动生成。
 
-请求示例：
+##### 图片上传与回滚机制
 
-```json
-{
-  "name": "山东红富士苹果",
-  "category_id": 1,
-  "description": "脆甜多汁的山东红富士",
-  "main_image": "/uploads/apple.jpg",
-  "images": "[\"/uploads/apple1.jpg\",\"/uploads/apple2.jpg\"]",
-  "status": 1,
-  "sort_order": 1,
-  "skus": [
-    {
-      "spec_name": "5斤装",
-      "weight": 5,
-      "price": 29.9,
-      "original_price": 39.9,
-      "stock": 100,
-      "image": "/uploads/apple-5.jpg"
-    },
-    {
-      "spec_name": "10斤装",
-      "weight": 10,
-      "price": 49.9,
-      "original_price": 69.9,
-      "stock": 50,
-      "image": "/uploads/apple-10.jpg"
-    }
-  ]
-}
+1. 文件先上传到 `uploads/temp/{随机ID}/` 临时目录
+2. 参数校验通过后，将临时文件移动到 `uploads/goods/{随机名}/` 正式目录
+3. 数据库事务写入成功后返回响应
+4. **失败回滚**：
+   - 参数校验失败 → 清理临时目录
+   - 数据库写入失败 → 清理临时目录 + 已迁移的正式目录
+   - 认证/鉴权失败 → `autoCleanupTemp` 中间件自动清理临时目录
+5. 请求结束后，临时目录由中间件兜底清理，确保不留残留文件
+
+##### 上传限制
+
+- 仅允许图片格式（`image/*`）
+- 单文件最大 5MB
+
+##### 请求示例（curl）
+
+```bash
+curl -X POST http://localhost:10040/api/goods/admin/create \
+  -H "Authorization: Bearer <admin_token>" \
+  -F "name=山东红富士苹果" \
+  -F "category_id=1" \
+  -F "description=脆甜多汁的山东红富士" \
+  -F "status=1" \
+  -F "sort_order=1" \
+  -F 'skus=[{"spec_name":"5斤装","weight":5,"price":29.9,"original_price":39.9,"stock":100},{"spec_name":"10斤装","weight":10,"price":49.9,"original_price":69.9,"stock":50}]' \
+  -F "main_image=@/path/to/main.jpg" \
+  -F "images=@/path/to/detail1.jpg" \
+  -F "images=@/path/to/detail2.jpg" \
+  -F "sku_image=@/path/to/sku1.jpg" \
+  -F "sku_image=@/path/to/sku2.jpg"
 ```
 
-响应示例：
+##### 响应示例
 
 ```json
 {
@@ -249,4 +253,5 @@ GET /api/goods/admin/list?page=1&pageSize=10&keyword=苹果&categoryId=1&status=
 - **ORM**：Prisma 5
 - **数据库**：MySQL 8.0
 - **认证**：JWT（jsonwebtoken）
+- **文件上传**：multer + fs-extra
 - **密码加密**：bcryptjs
