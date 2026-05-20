@@ -35,7 +35,7 @@ export interface GoodsItem {
   id: number
   name: string
   category_id: number
-  category_name?: string
+  categories?: { id: number; name: string }
   description: string
   main_image: string
   images: string
@@ -125,10 +125,9 @@ export function createGoods(formData: FormData) {
   })
 }
 
-export function updateGoods(id: number, data: GoodsForm) {
-  return request.patch(`/api/goods/admin/${id}`, {
-    ...data,
-    images: JSON.stringify(data.images),
+export function updateGoods(id: number, formData: FormData) {
+  return request.patch(`/api/goods/admin/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
 
@@ -149,7 +148,7 @@ export function getRecycleList(params: { page?: number; pageSize?: number; keywo
 }
 
 export function forceDeleteGoods(id: number) {
-  return request.delete(`/api/goods/admin/${id}/force`)
+  return request.delete(`/api/goods/admin/${id}/hard`)
 }
 
 export function getCategories() {
