@@ -1,18 +1,34 @@
 import { Router } from 'express'
 import {
-  getUserInfo,
   login,
   logout,
   register,
+  wxLogin,
+  getProfile,
+  updateProfile,
+  createAddress,
+  getAddresses,
+  updateAddress,
+  deleteAddress,
 } from '../controllers/user.controller'
+import { authenticate } from '../middleware/auth'
 
 const router = Router()
 
-// 测试接口
-router.get('/getUser', getUserInfo)
+// 无需认证
+router.post('/login', login)
+router.post('/wx-login', wxLogin)
+router.post('/register', register)
 
-router.post('/login', login) // 用户登录
-router.post('/register', register) // 用户注册
-router.post('/logout', logout) // 用户登出
+// 需要认证
+router.get('/profile', authenticate, getProfile)
+router.patch('/profile', authenticate, updateProfile)
+router.post('/logout', authenticate, logout)
+
+// 收货地址（需要认证）
+router.post('/addresses', authenticate, createAddress)
+router.get('/addresses', authenticate, getAddresses)
+router.patch('/addresses/:addressId', authenticate, updateAddress)
+router.delete('/addresses/:addressId', authenticate, deleteAddress)
 
 export default router
