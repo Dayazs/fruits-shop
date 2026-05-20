@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import path from 'path'
 import { goodsService } from '../service/goods.service'
 import {
   removeDir,
@@ -208,8 +209,16 @@ export const hardDeleteGoods = async (req: Request, res: Response) => {
     const data = await goodsService.hardDeleteGoods(goodsId)
 
     // DB 事务成功后删除所有关联图片文件
+    const cleanedDirs = new Set<string>()
     for (const filePath of data.filePaths) {
       deleteFileByUrl(filePath)
+      // 收集 goods 目录 URL，如 /uploads/goods/abc123
+      const match = filePath.match(/^(\/uploads\/goods\/[^/]+)/)
+      if (match) cleanedDirs.add(match[1])
+    }
+    // 删除空下来的 goods 目录
+    for (const dirUrl of cleanedDirs) {
+      removeDir(path.join(__dirname, '../../', dirUrl))
     }
 
     return res.status(200).json({ code: 200, msg: '已彻底删除' })
