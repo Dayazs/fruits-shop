@@ -151,6 +151,25 @@ export function forceDeleteGoods(id: number) {
   return request.delete(`/api/goods/admin/${id}/hard`)
 }
 
+export interface CategoryForm {
+  name?: string
+  parent_id?: number
+  sort_order?: number
+  is_show?: number
+}
+
+export function createCategory(data: CategoryForm) {
+  return request.post('/api/goods/admin/categories', data)
+}
+
 export function getCategories() {
   return request.get<unknown, Category[]>('/api/goods/admin/categories')
+}
+
+export function updateCategory(id: number, data: CategoryForm) {
+  return request.patch(`/api/goods/admin/categories/${id}`, data)
+}
+
+export function deleteCategory(id: number) {
+  return request.delete(`/api/goods/admin/categories/${id}`)
 }
