@@ -100,6 +100,106 @@ GET /api/goods/admin/categories
 }
 ```
 
+#### 添加商品分类
+
+```
+POST /api/goods/admin/categories
+Content-Type: application/json
+```
+
+认证：管理员（Bearer Token）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 分类名称 |
+| parent_id | number | 否 | 父分类 ID，默认 0（一级分类） |
+| sort_order | number | 否 | 排序，默认 0 |
+| is_show | number | 否 | 是否显示：0-不显示 1-显示，默认 1 |
+
+若 `parent_id` 不为 0，会校验目标父分类是否存在。
+
+请求示例：
+
+```json
+{
+  "name": "时令水果",
+  "parent_id": 1,
+  "sort_order": 3,
+  "is_show": 1
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "添加分类成功",
+  "data": { "id": 6, "name": "时令水果", "parent_id": 1, "sort_order": 3, "is_show": 1 }
+}
+```
+
+---
+
+#### 编辑商品分类
+
+```
+PATCH /api/goods/admin/categories/{categoryId}
+Content-Type: application/json
+```
+
+认证：管理员（Bearer Token）
+
+所有字段均为可选，仅更新传入的字段。`parent_id` 若传入，会校验目标父分类是否存在。
+
+请求体（JSON）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 否 | 分类名称 |
+| sort_order | number | 否 | 排序 |
+| is_show | number | 否 | 是否显示：0-不显示 1-显示 |
+| parent_id | number | 否 | 父分类 ID |
+
+请求示例：
+
+```json
+{
+  "name": "时令水果",
+  "sort_order": 3,
+  "is_show": 1,
+  "parent_id": 1
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "编辑分类成功",
+  "data": { "id": 3, "name": "时令水果", "parent_id": 1, "sort_order": 3, "is_show": 1 }
+}
+```
+
+---
+
+#### 删除商品分类
+
+```
+DELETE /api/goods/admin/categories/{categoryId}
+```
+
+认证：管理员（Bearer Token）
+
+前置条件：分类下没有未删除的商品，否则返回错误。
+
+响应示例：
+
+```json
+{ "code": 200, "msg": "删除分类成功", "data": { "id": 5, "name": "待删除分类" } }
+```
+
 ---
 
 #### 获取商品 SKU 列表
