@@ -272,6 +272,7 @@
                 <el-input-number
                   v-model="sku.price"
                   :min="0"
+                  :max="99999"
                   :precision="2"
                   placeholder="售价"
                   style="width: 100%"
@@ -281,6 +282,7 @@
                 <el-input-number
                   v-model="sku.original_price"
                   :min="0"
+                  :max="99999"
                   :precision="2"
                   placeholder="原价"
                   style="width: 100%"
@@ -611,9 +613,31 @@ const defaultForm = (): GoodsForm => ({
 
 const form = reactive<GoodsForm>(defaultForm())
 
+const hasChinese = (v: string) => /[一-龥]/.test(v)
+
 const formRules = {
-  name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
+  name: [
+    { required: true, message: '请输入商品名称', trigger: 'blur' },
+    {
+      validator: (_r: any, v: string, cb: any) => {
+        if (!v) return cb()
+        if (!hasChinese(v)) cb(new Error('商品名称不能为纯数字或纯英文字母'))
+        else cb()
+      },
+      trigger: 'blur',
+    },
+  ],
   category_id: [{ required: true, message: '请选择分类', trigger: 'change' }],
+  description: [
+    {
+      validator: (_r: any, v: string, cb: any) => {
+        if (!v) return cb()
+        if (!hasChinese(v)) cb(new Error('商品描述不能为纯数字或纯英文字母'))
+        else cb()
+      },
+      trigger: 'blur',
+    },
+  ],
 }
 
 const handleAdd = () => {
@@ -708,7 +732,13 @@ const buildFormData = (): FormData => {
     fd.append('main_image', mainImageFile.value)
   }
 
-  // 副图（只传新增的 File）
+  // 保留的旧图
+  const keepImages = subImageEntries.value
+    .filter((e) => !e.file)
+    .map((e) => e.url)
+  fd.append('keep_images', JSON.stringify(keepImages))
+
+  // 新上传的副图
   for (const entry of subImageEntries.value) {
     if (entry.file) {
       fd.append('images', entry.file)
@@ -727,14 +757,58 @@ const buildFormData = (): FormData => {
 }
 
 // ========== 提交 ==========
+const validateSkus = (): boolean => {
+  if (form.skus.length === 0) {
+    ElMessage.warning('请至少配置一个 SKU')
+    return false
+  }
+
+  for (let i = 0; i < form.skus.length; i++) {
+    const s = form.skus[i]!
+    const idx = form.skus.length > 1 ? `第 ${i + 1} 个 SKU：` : ''
+
+    if (!s.spec_name || !s.spec_name.trim()) {
+      ElMessage.warning(`${idx}请输入规格名称`)
+      return false
+    }
+    if (!hasChinese(s.spec_name)) {
+      ElMessage.warning(`${idx}规格名称不能为纯数字或纯英文字母`)
+      return false
+    }
+    if (!s.weight || !s.weight.trim()) {
+      ElMessage.warning(`${idx}请输入重量`)
+      return false
+    }
+    if (!s.price || Number(s.price) <= 0) {
+      ElMessage.warning(`${idx}价格必须大于 0`)
+      return false
+    }
+    if (Number(s.price) > 99999) {
+      ElMessage.warning(`${idx}价格不能超过 99999`)
+      return false
+    }
+    if (!s.original_price || Number(s.original_price) <= 0) {
+      ElMessage.warning(`${idx}原价必须大于 0`)
+      return false
+    }
+    if (Number(s.original_price) > 99999) {
+      ElMessage.warning(`${idx}原价不能超过 99999`)
+      return false
+    }
+    if (Number(s.original_price) <= Number(s.price)) {
+      ElMessage.warning(`${idx}原价必须大于价格`)
+      return false
+    }
+  }
+
+  return true
+}
+
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
-  if (form.skus.length === 0) {
-    ElMessage.warning('请至少配置一个 SKU')
-    return
-  }
+  if (!validateSkus()) return
 
   submitLoading.value = true
   try {
