@@ -3,12 +3,10 @@ import path from 'path'
 
 const UPLOADS_ROOT = path.join(__dirname, '../../uploads')
 
-// 确保目录存在，不存在则自动创建
 export function ensureDir(dirPath: string): void {
   fs.ensureDirSync(dirPath)
 }
 
-// 在 uploads/temp 下创建请求专属的临时目录，返回目录路径
 export function createTempDir(): string {
   const uuid = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 8)}`
   const tempDir = path.join(UPLOADS_ROOT, 'temp', uuid)
@@ -16,7 +14,6 @@ export function createTempDir(): string {
   return tempDir
 }
 
-// 将文件从临时目录移动到目标目录，返回移动后的完整路径
 export function moveFile(tempFilePath: string, targetDir: string): string {
   const fileName = path.basename(tempFilePath)
   const targetPath = path.join(targetDir, fileName)
@@ -24,16 +21,24 @@ export function moveFile(tempFilePath: string, targetDir: string): string {
   return targetPath
 }
 
-// 删除目录及其所有内容
 export function removeDir(dirPath?: string | null): void {
   if (dirPath && fs.existsSync(dirPath)) {
     fs.removeSync(dirPath)
   }
 }
 
+// 根据 URL 路径删除文件，如 /uploads/goods/abc/img.jpg
+export function deleteFileByUrl(urlPath?: string | null): void {
+  if (!urlPath) return
+  // URL 路径格式: /uploads/goods/xxx/file.jpg → 转为文件系统路径
+  const filePath = path.join(UPLOADS_ROOT, '..', urlPath)
+  if (fs.existsSync(filePath)) {
+    fs.removeSync(filePath)
+  }
+}
+
 type FileRef = { filename: string }
 
-// 将临时目录中的文件批量迁移到 goods/{goodsDirName}，返回 { mainImage, images, skuImages }
 export function persistGoodsImages(
   tempDir: string,
   goodsDirName: string,
@@ -76,4 +81,22 @@ export function persistGoodsImages(
   }
 
   return { mainImageRelPath, imageRelPaths, skuImageRelPaths, goodsDir }
+}
+
+// 将单个文件从临时目录移动到指定 goods 子目录，返回 URL 路径
+export function moveToGoodsDir(
+  tempDir: string,
+  goodsDirName: string,
+  file: FileRef,
+): string {
+  const goodsDir = path.join(UPLOADS_ROOT, 'goods', goodsDirName)
+  fs.ensureDirSync(goodsDir)
+
+  const tempPath = path.join(tempDir, file.filename)
+  const targetPath = path.join(goodsDir, file.filename)
+  if (fs.existsSync(tempPath)) {
+    fs.moveSync(tempPath, targetPath, { overwrite: true })
+    return `/uploads/goods/${goodsDirName}/${file.filename}`
+  }
+  return ''
 }
