@@ -446,6 +446,30 @@ export const goodsService = {
       }),
     ])
 
-    return { total, page, pageSize, list }
+    // 转换数据结构
+    const transformedList = list.map((fruit) => {
+      const skus = fruit.fruit_skus
+      const first_sku_price = skus.length > 0 ? skus[0].price : null
+      const total_stock = skus.reduce((sum, s) => sum + s.stock, 0)
+
+      return {
+        id: fruit.id,
+        name: fruit.name,
+        category_id: fruit.category_id,
+        description: fruit.description,
+        main_image: fruit.main_image,
+        images: fruit.images,
+        status: fruit.status,
+        sort_order: fruit.sort_order,
+        deleted_at: fruit.deleted_at,
+        created_at: fruit.created_at,
+        updated_at: fruit.updated_at,
+        first_sku_price,
+        total_stock,
+        categories: fruit.categories,
+      }
+    })
+
+    return { total, page, pageSize, list: transformedList }
   },
 }
