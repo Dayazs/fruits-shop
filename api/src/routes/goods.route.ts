@@ -1,5 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express'
-import { createGoods, getAdminGoodsList } from '../controllers/goods.controller'
+import {
+  createGoods,
+  getAdminGoodsList,
+  toggleGoodsStatus,
+  updateGoods,
+} from '../controllers/goods.controller'
 import { authenticate, isAdmin } from '../middleware/auth'
 import { upload } from '../middleware/upload'
 import { removeDir } from '../utils/file'
@@ -17,7 +22,6 @@ const handleUpload = (req: Request, res: Response, next: NextFunction) => {
   upload.any()(req, res, (err: any) => {
     if (err) {
       removeDir(req.tempDir)
-      // multer 内部已创建 tempDir，需清理
       return res
         .status(400)
         .json({ code: 400, msg: err.message || '文件上传失败' })
@@ -26,15 +30,19 @@ const handleUpload = (req: Request, res: Response, next: NextFunction) => {
   })
 }
 
-router.post(
-  '/admin/create',
-  handleUpload,
-  autoCleanupTemp,
-  authenticate,
-  isAdmin,
-  createGoods,
-)
+// 需要文件上传的路由（创建、编辑）
+const withUpload = [handleUpload, autoCleanupTemp, authenticate, isAdmin]
 
-router.get('/admin/list', authenticate, isAdmin, getAdminGoodsList)
+// 无需文件上传的路由
+const withAuth = [authenticate, isAdmin]
+
+// 添加商品
+router.post('/admin/create', ...withUpload, createGoods)
+// 编辑商品信息
+router.patch('/admin/:goodsId', ...withUpload, updateGoods)
+// 获取商品列表
+router.get('/admin/list', ...withAuth, getAdminGoodsList)
+// 更新商品状态
+router.patch('/admin/:goodsId/status', ...withAuth, toggleGoodsStatus)
 
 export default router
