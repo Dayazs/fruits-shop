@@ -3,7 +3,9 @@
     <el-card>
       <div class="page-header">
         <div class="header-left">
-          <el-button :icon="ArrowLeft" @click="$router.push('/goods')">返回商品列表</el-button>
+          <el-button :icon="ArrowLeft" @click="$router.push('/goods')"
+            >返回商品列表</el-button
+          >
           <span class="page-title">回收站</span>
         </div>
         <el-input
@@ -22,9 +24,17 @@
     </el-card>
 
     <el-card class="table-card">
-      <el-table :data="list" border stripe v-loading="loading" style="width: 100%">
+      <el-table
+        :data="list"
+        border
+        stripe
+        v-loading="loading"
+        style="width: 100%"
+      >
         <el-table-column label="序号" width="60" align="center">
-          <template #default="{ $index }">{{ (pager.page - 1) * pager.pageSize + $index + 1 }}</template>
+          <template #default="{ $index }">{{
+            (pager.page - 1) * pager.pageSize + $index + 1
+          }}</template>
         </el-table-column>
         <el-table-column prop="id" label="商品ID" width="80" align="center" />
         <el-table-column label="主图" width="100" align="center">
@@ -40,20 +50,37 @@
             <span v-else class="no-image">暂无</span>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="商品名称" min-width="150" show-overflow-tooltip />
+        <el-table-column
+          prop="name"
+          label="商品名称"
+          min-width="150"
+          show-overflow-tooltip
+        />
         <el-table-column label="价格" width="100" align="center">
-          <template #default="{ row }">¥{{ Number(row.first_sku_price || 0).toFixed(2) }}</template>
+          <template #default="{ row }"
+            >¥{{ Number(row.first_sku_price || 0).toFixed(2) }}</template
+          >
         </el-table-column>
-        <el-table-column prop="stock" label="库存" width="80" align="center" />
+        <el-table-column prop="stock" label="库存" width="80" align="center">
+          <template #default="{ row }">{{ row.total_stock }}</template>
+        </el-table-column>
         <el-table-column label="分类" width="100" align="center">
-          <template #default="{ row }">{{ row.category_name }}</template>
+          <template #default="{ row }">{{ row.categories?.name }}</template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button size="small" type="primary" :icon="RefreshLeft" @click="handleRestore(row)"
+            <el-button
+              size="small"
+              type="primary"
+              :icon="RefreshLeft"
+              @click="handleRestore(row)"
               >恢复</el-button
             >
-            <el-button size="small" type="danger" :icon="Delete" @click="handleForceDelete(row)"
+            <el-button
+              size="small"
+              type="danger"
+              :icon="Delete"
+              @click="handleForceDelete(row)"
               >彻底删除</el-button
             >
           </template>
@@ -80,7 +107,12 @@
 import { reactive, ref } from 'vue'
 import { ArrowLeft, Search, RefreshLeft, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getRecycleList, forceDeleteGoods, restoreGoods, type GoodsItem } from '@/api/goods'
+import {
+  getRecycleList,
+  forceDeleteGoods,
+  restoreGoods,
+  type GoodsItem,
+} from '@/api/goods'
 
 const loading = ref(false)
 const list = ref<GoodsItem[]>([])
@@ -127,12 +159,16 @@ const handleRestore = async (row: GoodsItem) => {
 
 const handleForceDelete = async (row: GoodsItem) => {
   try {
-    await ElMessageBox.confirm('此操作将永久删除该商品，不可恢复，确定继续？', '警告', {
-      type: 'warning',
-      confirmButtonText: '确定删除',
-      cancelButtonText: '取消',
-      confirmButtonClass: 'el-button--danger',
-    })
+    await ElMessageBox.confirm(
+      '此操作将永久删除该商品，不可恢复，确定继续？',
+      '警告',
+      {
+        type: 'warning',
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+      },
+    )
   } catch {
     return
   }
