@@ -75,20 +75,45 @@ export const goodsService = {
     return result
   },
 
+  // 获取商品分类
+  async getCategories() {
+    const categories = await prisma.categories.findMany()
+    return categories
+  },
+
+  // 根据商品 ID 获取该商品的所有 SKU 详情
+  async getGoodsSkus(goodsId: number) {
+    const goods = await prisma.fruits.findFirst({
+      where: { id: goodsId, deleted_at: null },
+      select: { id: true, name: true },
+    })
+
+    if (!goods) {
+      throw new Error('商品不存在')
+    }
+
+    const skus = await prisma.fruit_skus.findMany({
+      where: { fruit_id: goodsId },
+      orderBy: { id: 'asc' },
+    })
+
+    return { goodsId: goods.id, goodsName: goods.name, skus }
+  },
+
   // 后台获取商品列表
   async getAdminGoodsList(params: {
     page: number
     pageSize: number
-    keyword?: string
+    name?: string
     categoryId?: number
     status?: number
   }) {
-    const { page, pageSize, keyword, categoryId, status } = params
+    const { page, pageSize, name, categoryId, status } = params
 
     const where: any = {}
 
-    if (keyword) {
-      where.name = { contains: keyword }
+    if (name) {
+      where.name = { contains: name }
     }
 
     if (categoryId !== undefined && categoryId !== null) {
@@ -99,6 +124,9 @@ export const goodsService = {
       where.status = status
     }
 
+    // 排除已软删除的商品
+    where.deleted_at = null
+
     const [total, list] = await Promise.all([
       prisma.fruits.count({ where }),
       prisma.fruits.findMany({
@@ -107,7 +135,9 @@ export const goodsService = {
         take: pageSize,
         orderBy: { sort_order: 'asc' },
         include: {
-          fruit_skus: true,
+          fruit_skus: {
+            orderBy: { id: 'asc' },
+          },
           categories: {
             select: { id: true, name: true },
           },
@@ -115,11 +145,35 @@ export const goodsService = {
       }),
     ])
 
+    // 转换数据结构：first_sku_price + total_stock，移除完整 SKU 数组
+    const transformedList = list.map((fruit) => {
+      const skus = fruit.fruit_skus
+      const first_sku_price = skus.length > 0 ? skus[0].price : null
+      const total_stock = skus.reduce((sum, s) => sum + s.stock, 0)
+
+      return {
+        id: fruit.id,
+        name: fruit.name,
+        category_id: fruit.category_id,
+        description: fruit.description,
+        main_image: fruit.main_image,
+        images: fruit.images,
+        status: fruit.status,
+        sort_order: fruit.sort_order,
+        deleted_at: fruit.deleted_at,
+        created_at: fruit.created_at,
+        updated_at: fruit.updated_at,
+        first_sku_price,
+        total_stock,
+        categories: fruit.categories,
+      }
+    })
+
     return {
       total,
       page,
       pageSize,
-      list,
+      list: transformedList,
     }
   },
 
@@ -180,7 +234,9 @@ export const goodsService = {
 
         // 需要删除的 SKU：已有但在本次列表中不存在的
         const incomingIds = newSkus.map((s) => s.id).filter(Boolean) as number[]
-        const idsToDelete = existingIds.filter((id) => !incomingIds.includes(id))
+        const idsToDelete = existingIds.filter(
+          (id) => !incomingIds.includes(id),
+        )
 
         if (idsToDelete.length > 0) {
           await tx.fruit_skus.deleteMany({
@@ -194,7 +250,8 @@ export const goodsService = {
             const skuData: any = { updated_at: now }
             if (sku.spec_name !== undefined) skuData.spec_name = sku.spec_name
             if (sku.weight !== undefined)
-              skuData.weight = sku.weight !== null ? new Prisma.Decimal(sku.weight) : null
+              skuData.weight =
+                sku.weight !== null ? new Prisma.Decimal(sku.weight) : null
             if (sku.price !== undefined)
               skuData.price = new Prisma.Decimal(sku.price)
             if (sku.original_price !== undefined)
@@ -215,12 +272,14 @@ export const goodsService = {
               data: {
                 fruit_id: goodsId,
                 spec_name: sku.spec_name || '',
-                weight: sku.weight !== undefined && sku.weight !== null
-                  ? new Prisma.Decimal(sku.weight)
-                  : null,
+                weight:
+                  sku.weight !== undefined && sku.weight !== null
+                    ? new Prisma.Decimal(sku.weight)
+                    : null,
                 price: new Prisma.Decimal(sku.price || 0),
                 original_price:
-                  sku.original_price !== undefined && sku.original_price !== null
+                  sku.original_price !== undefined &&
+                  sku.original_price !== null
                     ? new Prisma.Decimal(sku.original_price)
                     : null,
                 stock: sku.stock || 0,
@@ -269,5 +328,124 @@ export const goodsService = {
     })
 
     return updatedGoods
+  },
+
+  // 软删除：移入回收站
+  async softDeleteGoods(goodsId: number) {
+    const goods = await prisma.fruits.findFirst({
+      where: { id: goodsId },
+      select: { id: true, deleted_at: true },
+    })
+
+    if (!goods) {
+      throw new Error('商品不存在')
+    }
+
+    if (goods.deleted_at) {
+      throw new Error('商品已在回收站中')
+    }
+
+    const now = new Date()
+
+    return prisma.fruits.update({
+      where: { id: goodsId },
+      data: { deleted_at: now, updated_at: now },
+    })
+  },
+
+  // 移除软删除
+  async restoreGoods(goodsId: number) {
+    const goods = await prisma.fruits.findFirst({
+      where: { id: goodsId },
+    })
+    if (!goods) {
+      throw new Error('未找到商品')
+    }
+
+    const now = new Date()
+
+    return await prisma.fruits.update({
+      where: { id: goodsId },
+      data: { deleted_at: null, updated_at: now },
+    })
+  },
+
+  // 彻底删除：物理删除商品及其 SKU，返回需要清理的图片路径
+  async hardDeleteGoods(goodsId: number) {
+    return prisma.$transaction(async (tx) => {
+      // 确保商品存在且已软删除
+      const goods = await tx.fruits.findFirst({
+        where: { id: goodsId },
+        include: { fruit_skus: true },
+      })
+
+      if (!goods) {
+        throw new Error('商品不存在')
+      }
+
+      if (!goods.deleted_at) {
+        throw new Error('商品未在回收站中，请先软删除')
+      }
+
+      // 收集所有需要删除的图片文件路径
+      const filePaths: string[] = []
+
+      if (goods.main_image) {
+        filePaths.push(goods.main_image)
+      }
+
+      if (goods.images) {
+        try {
+          const imageList: string[] = JSON.parse(goods.images)
+          filePaths.push(...imageList)
+        } catch {
+          // 数据异常，忽略
+        }
+      }
+
+      for (const sku of goods.fruit_skus) {
+        if (sku.image) {
+          filePaths.push(sku.image)
+        }
+      }
+
+      // fruit_skus 设置了 onDelete: Cascade，删除 fruit 会自动级联删除 SKU
+      await tx.fruits.delete({ where: { id: goodsId } })
+
+      return { deletedGoodsId: goodsId, filePaths }
+    })
+  },
+
+  // 回收站列表
+  async getRecycleBin(params: {
+    page: number
+    pageSize: number
+    keyword?: string
+  }) {
+    const { page, pageSize, keyword } = params
+
+    const where: any = {
+      deleted_at: { not: null },
+    }
+
+    if (keyword) {
+      where.name = { contains: keyword }
+    }
+
+    const [total, list] = await Promise.all([
+      prisma.fruits.count({ where }),
+      prisma.fruits.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { deleted_at: 'desc' },
+        include: {
+          fruit_skus: true,
+          categories: { select: { id: true, name: true } },
+        },
+      }),
+    ])
+
+    return { total, page, pageSize, list }
   },
 }

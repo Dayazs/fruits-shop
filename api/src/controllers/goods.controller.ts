@@ -134,7 +134,7 @@ export const getAdminGoodsList = async (req: Request, res: Response) => {
   try {
     const page = parseInt(req.query.page as string) || 1
     const pageSize = parseInt(req.query.pageSize as string) || 10
-    const keyword = req.query.keyword as string | undefined
+    const name = req.query.name as string | undefined
     const categoryId = req.query.categoryId
       ? parseInt(req.query.categoryId as string)
       : undefined
@@ -146,7 +146,7 @@ export const getAdminGoodsList = async (req: Request, res: Response) => {
     const data = await goodsService.getAdminGoodsList({
       page,
       pageSize,
-      keyword,
+      name,
       categoryId,
       status,
     })
@@ -154,6 +154,17 @@ export const getAdminGoodsList = async (req: Request, res: Response) => {
     res.status(200).json({ code: 200, msg: '获取商品列表成功', data })
   } catch (err: any) {
     res.status(500).json({ code: 500, msg: err.message || '获取商品列表失败' })
+  }
+}
+
+// 获取商品 SKU 列表
+export const getGoodsSkus = async (req: Request, res: Response) => {
+  try {
+    const goodsId = parseInt(req.params.goodsId as string)
+    const data = await goodsService.getGoodsSkus(goodsId)
+    return res.status(200).json({ code: 200, msg: '获取 SKU 列表成功', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
   }
 }
 
@@ -165,6 +176,77 @@ export const toggleGoodsStatus = async (req: Request, res: Response) => {
     return res.status(200).json({ code: 200, msg: '更改成功', data })
   } catch (err: any) {
     return res.status(403).json({ code: 403, msg: err.message })
+  }
+}
+
+// 软删除商品（移入回收站）
+export const softDeleteGoods = async (req: Request, res: Response) => {
+  try {
+    const goodsId = parseInt(req.params.goodsId as string)
+    const data = await goodsService.softDeleteGoods(goodsId)
+    return res.status(200).json({ code: 200, msg: '已移入回收站', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 移除软删除
+export const restoreGoods = async (req: Request, res: Response) => {
+  try {
+    const goodsId = parseInt(req.params.goodsId as string)
+    const data = await goodsService.restoreGoods(goodsId)
+    return res.status(200).json({ code: 200, msg: '已恢复', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 彻底删除商品（物理删除 + 清理图片文件）
+export const hardDeleteGoods = async (req: Request, res: Response) => {
+  try {
+    const goodsId = parseInt(req.params.goodsId as string)
+    const data = await goodsService.hardDeleteGoods(goodsId)
+
+    // DB 事务成功后删除所有关联图片文件
+    for (const filePath of data.filePaths) {
+      deleteFileByUrl(filePath)
+    }
+
+    return res.status(200).json({ code: 200, msg: '已彻底删除' })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 回收站列表
+export const getRecycleBin = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const pageSize = parseInt(req.query.pageSize as string) || 10
+    const keyword = req.query.keyword as string | undefined
+
+    const data = await goodsService.getRecycleBin({
+      page,
+      pageSize,
+      keyword,
+    })
+
+    return res.status(200).json({ code: 200, msg: '获取回收站列表成功', data })
+  } catch (err: any) {
+    return res
+      .status(500)
+      .json({ code: 500, msg: err.message || '获取回收站列表失败' })
+  }
+}
+
+// 获取商品分类
+export const getCategories = async (req: Request, res: Response) => {
+  try {
+    const data = await goodsService.getCategories()
+
+    return res.status(200).json({ code: 200, msg: '获取商品分类成功', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
   }
 }
 
@@ -304,9 +386,7 @@ export const updateGoods = async (req: Request, res: Response) => {
 
       // 标记被删除 SKU 的图片（整条 SKU 被删除时）
       if (existing.fruit_skus) {
-        const incomingIds: number[] = skus
-          .map((s: any) => s.id)
-          .filter(Boolean)
+        const incomingIds: number[] = skus.map((s: any) => s.id).filter(Boolean)
         for (const oldSku of existing.fruit_skus) {
           if (!incomingIds.includes(oldSku.id) && oldSku.image) {
             oldFilePathsToDelete.push(oldSku.image)
