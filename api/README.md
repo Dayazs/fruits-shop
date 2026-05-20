@@ -37,6 +37,8 @@ src
 | `DATABASE_URL` | MySQL 连接字符串 |
 | `JWT_SECRET` | access_token 签名密钥 |
 | `REFRESH_TOKEN_SECRET` | refresh_token 签名密钥 |
+| `APPID` | 微信小程序 AppID |
+| `APP_SECRET` | 微信小程序 AppSecret |
 
 ## 启动
 
@@ -60,10 +62,181 @@ pnpm start
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| GET | `/getUser` | 测试接口 | 否 |
-| POST | `/login` | 用户登录 | 否 |
+| POST | `/login` | 用户登录（账号密码） | 否 |
+| POST | `/wx-login` | 微信一键登录 | 否 |
 | POST | `/register` | 用户注册 | 否 |
+| GET | `/profile` | 获取用户信息 | 是 |
+| PATCH | `/profile` | 更新用户信息 | 是 |
 | POST | `/logout` | 用户登出 | 是 |
+| POST | `/addresses` | 添加收货地址 | 是 |
+| GET | `/addresses` | 获取收货地址列表 | 是 |
+| PATCH | `/addresses/:addressId` | 编辑收货地址 | 是 |
+| DELETE | `/addresses/:addressId` | 删除收货地址 | 是 |
+
+#### 微信一键登录
+
+```
+POST /api/user/wx-login
+Content-Type: application/json
+```
+
+无需认证。
+
+##### 请求体
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| code | string | 是 | 调用 `wx.login()` 获取的临时凭证 |
+| nickname | string | 否 | 微信昵称（首次登录时作为用户名） |
+| avatar | string | 否 | 微信头像 URL |
+
+##### 登录流程
+
+1. 前端调用 `wx.login()` 获取 `code`
+2. 后端用 `code` 调用微信 `jscode2session` 接口换取 `openid`
+3. 根据 `openid` 查找用户：
+   - 已存在 → 直接登录，返回 JWT
+   - 不存在 → 自动创建账号（用户名：`微信用户_xxxxxx`），返回 JWT
+4. `password` 字段为空（微信登录不需要密码）
+
+##### 请求示例
+
+```json
+{
+  "code": "0b1DnOll2e3YR54d0Lml2xO3FH0DnOlN",
+  "nickname": "小明",
+  "avatar": "https://thirdwx.qlogo.cn/xxx/132"
+}
+```
+
+##### 响应示例
+
+```json
+{
+  "code": 200,
+  "msg": "登录成功",
+  "data": {
+    "id": 1,
+    "username": "小明",
+    "avatar": "https://thirdwx.qlogo.cn/xxx/132",
+    "token": "eyJhbGciOiJIUzI1NiIs..."
+  }
+}
+```
+
+---
+
+#### 获取/更新用户信息
+
+```
+GET    /api/user/profile    → 获取当前用户信息
+PATCH  /api/user/profile    → 更新用户信息
+```
+
+认证：是（Bearer Token）
+
+##### 更新用户信息请求体（JSON）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| avatar | string | 否 | 头像 URL |
+| username | string | 否 | 用户名称 |
+| mobile | string | 否 | 手机号码 |
+
+响应示例（获取/更新）：
+
+```json
+{
+  "code": 200,
+  "msg": "获取用户信息成功",
+  "data": {
+    "id": 1,
+    "username": "小明",
+    "avatar": "https://thirdwx.qlogo.cn/xxx/132",
+    "mobile": "18029384792"
+  }
+}
+```
+
+---
+
+#### 收货地址
+
+##### 添加收货地址
+
+```
+POST /api/user/addresses
+```
+
+认证：是（Bearer Token）
+
+请求体（JSON）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| receiver_name | string | 是 | 收货人 |
+| receiver_mobile | string | 是 | 收货电话 |
+| province | string | 是 | 省 |
+| city | string | 是 | 市 |
+| district | string | 是 | 区 |
+| detail_address | string | 是 | 详细地址 |
+| is_default | number | 否 | 是否默认：0-否 1-是，默认 0 |
+
+设为默认时自动取消其他默认地址。
+
+##### 获取收货地址列表
+
+```
+GET /api/user/addresses
+```
+
+认证：是（Bearer Token）
+
+返回当前用户所有地址，按 `is_default desc, id desc` 排序。
+
+##### 编辑收货地址
+
+```
+PATCH /api/user/addresses/{addressId}
+```
+
+认证：是（Bearer Token）
+
+所有字段可选。设为默认时自动取消其他默认地址。
+
+##### 删除收货地址
+
+```
+DELETE /api/user/addresses/{addressId}
+```
+
+认证：是（Bearer Token）
+
+物理删除，直接从数据库移除。
+
+地址响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "获取地址列表成功",
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "receiver_name": "张三",
+      "receiver_mobile": "13800138000",
+      "province": "广东省",
+      "city": "深圳市",
+      "district": "南山区",
+      "detail_address": "科技园路1号",
+      "is_default": 1,
+      "created_at": "2026-05-20T10:00:00.000Z",
+      "updated_at": "2026-05-20T10:00:00.000Z"
+    }
+  ]
+}
+```
 
 ---
 
