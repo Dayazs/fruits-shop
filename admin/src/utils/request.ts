@@ -39,7 +39,30 @@ request.interceptors.response.use(
 
     return Promise.reject(new Error(res.message || '请求失败'))
   },
-  (err) => {},
+  (err) => {
+    if (err.response) {
+      const status = err.response.status
+      const msg = err.response.data?.msg
+      switch (status) {
+        case 401:
+          ElMessage.error(msg)
+          break
+        case 403:
+          ElMessage.error('没有权限访问')
+          break
+        case 404:
+          ElMessage.error('请求资源不存在')
+          break
+        case 500:
+          ElMessage.error('服务器内部错误')
+          break
+        default:
+          ElMessage.error(err.response.data?.msg || '请求失败')
+      }
+    } else {
+      ElMessage.error('网络异常，请检查网络')
+    }
+  },
 )
 
 export default request
