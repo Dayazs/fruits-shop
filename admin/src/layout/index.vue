@@ -30,7 +30,7 @@
               <el-icon><list /></el-icon>
               <span>商品列表</span>
             </el-menu-item>
-            <el-menu-item index="goods-category">
+            <el-menu-item index="/goods/category">
               <el-icon><collection-tag /></el-icon>
               <span>商品分类</span>
             </el-menu-item>
