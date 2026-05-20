@@ -259,6 +259,62 @@ export const getCategories = async (req: Request, res: Response) => {
   }
 }
 
+// 添加商品分类
+export const createCategory = async (req: Request, res: Response) => {
+  try {
+    const { name, parent_id, sort_order, is_show } = req.body
+
+    if (!name) {
+      return res
+        .status(400)
+        .json({ code: 400, msg: '分类名称不能为空' })
+    }
+
+    const data = await goodsService.createCategory({
+      name,
+      parent_id,
+      sort_order,
+      is_show,
+    })
+
+    return res.status(200).json({ code: 200, msg: '添加分类成功', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 编辑商品分类
+export const updateCategory = async (req: Request, res: Response) => {
+  try {
+    const categoryId = parseInt(req.params.categoryId as string)
+    const { name, sort_order, is_show, parent_id } = req.body
+
+    const updates: any = {}
+    if (name !== undefined) updates.name = name
+    if (sort_order !== undefined) updates.sort_order = sort_order
+    if (is_show !== undefined) updates.is_show = is_show
+    if (parent_id !== undefined) updates.parent_id = parent_id
+
+    const data = await goodsService.updateCategory(categoryId, updates)
+
+    return res.status(200).json({ code: 200, msg: '编辑分类成功', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 删除商品分类
+export const deleteCategory = async (req: Request, res: Response) => {
+  try {
+    const categoryId = parseInt(req.params.categoryId as string)
+    const data = await goodsService.deleteCategory(categoryId)
+
+    return res.status(200).json({ code: 200, msg: '删除分类成功', data })
+  } catch (err: any) {
+    return res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
 // 编辑商品信息
 export const updateGoods = async (req: Request, res: Response) => {
   const goodsId = parseInt(req.params.goodsId as string)

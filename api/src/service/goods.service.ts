@@ -81,6 +81,104 @@ export const goodsService = {
     return categories
   },
 
+  // 添加商品分类
+  async createCategory(params: {
+    name: string
+    parent_id?: number
+    sort_order?: number
+    is_show?: number
+  }) {
+    const { name, parent_id = 0, sort_order = 0, is_show = 1 } = params
+
+    // 如果传了 parent_id，校验父分类是否存在
+    if (parent_id !== 0) {
+      const parent = await prisma.categories.findFirst({
+        where: { id: parent_id },
+      })
+      if (!parent) {
+        throw new Error('父分类不存在')
+      }
+    }
+
+    const now = new Date()
+
+    return prisma.categories.create({
+      data: {
+        name,
+        parent_id,
+        sort_order,
+        is_show,
+        created_at: now,
+        updated_at: now,
+      },
+    })
+  },
+
+  // 编辑商品分类
+  async updateCategory(
+    categoryId: number,
+    updates: {
+      name?: string
+      sort_order?: number
+      is_show?: number
+      parent_id?: number
+    },
+  ) {
+    const category = await prisma.categories.findFirst({
+      where: { id: categoryId },
+    })
+
+    if (!category) {
+      throw new Error('分类不存在')
+    }
+
+    // 如果传了 parent_id，校验父分类是否存在
+    if (updates.parent_id !== undefined) {
+      const parent = await prisma.categories.findFirst({
+        where: { id: updates.parent_id },
+      })
+      if (!parent) {
+        throw new Error('父分类不存在')
+      }
+    }
+
+    const now = new Date()
+    const data: any = { updated_at: now }
+    if (updates.name !== undefined) data.name = updates.name
+    if (updates.sort_order !== undefined) data.sort_order = updates.sort_order
+    if (updates.is_show !== undefined) data.is_show = updates.is_show
+    if (updates.parent_id !== undefined) data.parent_id = updates.parent_id
+
+    return prisma.categories.update({
+      where: { id: categoryId },
+      data,
+    })
+  },
+
+  // 删除商品分类
+  async deleteCategory(categoryId: number) {
+    const category = await prisma.categories.findFirst({
+      where: { id: categoryId },
+    })
+
+    if (!category) {
+      throw new Error('分类不存在')
+    }
+
+    // 检查是否有商品引用了该分类
+    const productCount = await prisma.fruits.count({
+      where: { category_id: categoryId, deleted_at: null },
+    })
+
+    if (productCount > 0) {
+      throw new Error('该分类下有商品，无法删除')
+    }
+
+    return prisma.categories.delete({
+      where: { id: categoryId },
+    })
+  },
+
   // 根据商品 ID 获取该商品的所有 SKU 详情
   async getGoodsSkus(goodsId: number) {
     const goods = await prisma.fruits.findFirst({
