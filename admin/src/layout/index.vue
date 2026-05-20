@@ -26,13 +26,17 @@
               <el-icon><goods /></el-icon>
               <span>商品管理</span>
             </template>
-            <el-menu-item index="goods-list">
+            <el-menu-item index="/goods">
               <el-icon><list /></el-icon>
               <span>商品列表</span>
             </el-menu-item>
             <el-menu-item index="goods-category">
               <el-icon><collection-tag /></el-icon>
               <span>商品分类</span>
+            </el-menu-item>
+            <el-menu-item index="/goods/recycle">
+              <el-icon><delete /></el-icon>
+              <span>回收站</span>
             </el-menu-item>
           </el-sub-menu>
 
@@ -158,6 +162,7 @@ import {
   Fold,
   Expand,
   ArrowDown,
+  Delete,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
