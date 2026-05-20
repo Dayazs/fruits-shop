@@ -4,6 +4,12 @@ import {
   getAdminGoodsList,
   toggleGoodsStatus,
   updateGoods,
+  softDeleteGoods,
+  hardDeleteGoods,
+  getRecycleBin,
+  getCategories,
+  restoreGoods,
+  getGoodsSkus,
 } from '../controllers/goods.controller'
 import { authenticate, isAdmin } from '../middleware/auth'
 import { upload } from '../middleware/upload'
@@ -30,19 +36,31 @@ const handleUpload = (req: Request, res: Response, next: NextFunction) => {
   })
 }
 
-// 需要文件上传的路由（创建、编辑）
+// 需要文件上传的路由
 const withUpload = [handleUpload, autoCleanupTemp, authenticate, isAdmin]
 
-// 无需文件上传的路由
+// 仅认证鉴权
 const withAuth = [authenticate, isAdmin]
 
+// 商品列表（不含已删除）
+router.get('/admin/list', ...withAuth, getAdminGoodsList)
+// 商品分类
+router.get('/admin/categories', ...withAuth, getCategories)
+// 回收站列表
+router.get('/admin/recycle', ...withAuth, getRecycleBin)
+// 商品 SKU 详情
+router.get('/admin/:goodsId/skus', ...withAuth, getGoodsSkus)
 // 添加商品
 router.post('/admin/create', ...withUpload, createGoods)
 // 编辑商品信息
 router.patch('/admin/:goodsId', ...withUpload, updateGoods)
-// 获取商品列表
-router.get('/admin/list', ...withAuth, getAdminGoodsList)
 // 更新商品状态
 router.patch('/admin/:goodsId/status', ...withAuth, toggleGoodsStatus)
+// 软删除（移入回收站）
+router.delete('/admin/:goodsId', ...withAuth, softDeleteGoods)
+// 移除软删除
+router.patch('/admin/:goodsId/restoregoods', ...withAuth, restoreGoods)
+// 彻底删除
+router.delete('/admin/:goodsId/hard', ...withAuth, hardDeleteGoods)
 
 export default router
