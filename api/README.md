@@ -98,7 +98,9 @@ Content-Type: multipart/form-data
 | skus | string | 是 | SKU 列表（JSON 字符串） |
 | main_image | file | 否 | 主图（1 张） |
 | images | file[] | 否 | 副图（多张） |
-| sku_image | file[] | 否 | SKU 图片，按顺序对应 skus 数组 |
+| sku_image_0 | file | 否 | 第 1 个 SKU 的规格图片 |
+| sku_image_1 | file | 否 | 第 2 个 SKU 的规格图片 |
+| ... | file | 否 | 以此类推，索引与 skus 数组对应 |
 
 ##### SKU JSON 结构（skus 字段）
 
@@ -142,8 +144,8 @@ curl -X POST http://localhost:10040/api/goods/admin/create \
   -F "main_image=@/path/to/main.jpg" \
   -F "images=@/path/to/detail1.jpg" \
   -F "images=@/path/to/detail2.jpg" \
-  -F "sku_image=@/path/to/sku1.jpg" \
-  -F "sku_image=@/path/to/sku2.jpg"
+  -F "sku_image_0=@/path/to/sku1.jpg" \
+  -F "sku_image_1=@/path/to/sku2.jpg"
 ```
 
 ##### 响应示例
@@ -245,6 +247,121 @@ GET /api/goods/admin/list?page=1&pageSize=10&keyword=苹果&categoryId=1&status=
   }
 }
 ```
+
+---
+
+#### 编辑商品信息
+
+```
+PATCH /api/goods/admin/{goodsId}
+Content-Type: multipart/form-data
+```
+
+认证：管理员（Bearer Token）
+
+所有字段均为可选，仅更新传入的字段。
+
+##### 上传字段
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 否 | 商品名称 |
+| category_id | string | 否 | 分类 ID |
+| description | string | 否 | 商品描述 |
+| status | string | 否 | 0-下架 1-上架 |
+| sort_order | string | 否 | 排序 |
+| skus | string | 否 | SKU 列表（JSON 字符串） |
+| main_image | file | 否 | 新主图（替换旧图） |
+| images | file[] | 否 | 新增的副图 |
+| keep_images | string | 否 | 保留的旧副图 URL（JSON 数组），不在该数组中的旧副图将被删除 |
+| sku_image_0 | file | 否 | 第 1 个 SKU 的新图片 |
+| sku_image_1 | file | 否 | 第 2 个 SKU 的新图片 |
+
+##### SKU JSON 结构（skus 字段）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| id | number | 否 | SKU ID（更新现有 SKU 时必填，不传则新建） |
+| spec_name | string | 否 | 规格名称 |
+| weight | number | 否 | 重量（斤） |
+| price | number | 否 | 售价 |
+| original_price | number | 否 | 原价 |
+| stock | number | 否 | 库存 |
+
+未传入 id 的 SKU 视为新建，已存在但不在列表中的 SKU 将被删除。
+
+##### 图片更新逻辑
+
+- **主图**：上传新主图 → 旧文件在 DB 成功后自动删除
+- **副图**：前端传 `keep_images`（要保留的旧图 URL） + `images`（新文件），最终合并为新的副图列表；不在 `keep_images` 中的旧副图文件会被删除
+- **SKU 图片**：使用 `sku_image_{索引}` 字段名，索引对应 skus 数组位置。若某 SKU 被整条删除，其图片文件同步清理
+
+##### 原子性保证
+
+1. 新文件先迁移到正式目录
+2. 执行数据库事务（商品 + SKU 更新）
+3. DB 成功 → 删除被替换的旧文件
+4. DB 失败 → 回滚已迁移的新文件，旧文件完整保留
+
+##### 请求示例（curl）
+
+```bash
+curl -X PATCH http://localhost:10040/api/goods/admin/1 \
+  -H "Authorization: Bearer <admin_token>" \
+  -F "name=山东红富士苹果（升级版）" \
+  -F "status=0" \
+  -F "main_image=@/path/to/new-main.jpg" \
+  -F "images=@/path/to/new-detail.jpg" \
+  -F 'keep_images=["/uploads/goods/xxx/old-detail.jpg"]' \
+  -F 'skus=[{"id":99,"spec_name":"5斤装","price":35.9,"stock":200},{"spec_name":"15斤装","price":79.9,"stock":30}]' \
+  -F "sku_image_1=@/path/to/new-sku2.jpg"
+```
+
+##### 响应示例
+
+```json
+{
+  "code": 200,
+  "msg": "编辑商品成功",
+  "data": {
+    "id": 1,
+    "name": "山东红富士苹果（升级版）",
+    "main_image": "/uploads/goods/xxx/new-main.jpg",
+    "images": "[\"/uploads/goods/xxx/old-detail.jpg\",\"/uploads/goods/xxx/new-detail.jpg\"]",
+    "status": 0,
+    "updated_at": "2026-05-20T08:00:00.000Z",
+    "fruit_skus": [
+      { "id": 99, "spec_name": "5斤装", "price": "35.90", "stock": 200 },
+      { "id": 101, "spec_name": "15斤装", "price": "79.90", "stock": 30 }
+    ],
+    "categories": { "id": 1, "name": "国产水果" }
+  }
+}
+```
+
+---
+
+#### 商品上/下架
+
+```
+PATCH /api/goods/admin/{goodsId}/status
+```
+
+认证：管理员（Bearer Token）
+
+无需请求体，自动切换当前状态（上架 → 下架，下架 → 上架）。
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "更改成功",
+  "data": { "id": 1, "status": 0 }
+}
+```
+
+---
 
 ## 技术栈
 
