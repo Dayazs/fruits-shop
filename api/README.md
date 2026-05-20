@@ -77,6 +77,86 @@ pnpm start
 
 ### 商品接口 `/api/goods`
 
+#### 获取商品分类
+
+```
+GET /api/goods/admin/categories
+```
+
+认证：管理员（Bearer Token）
+
+返回所有商品分类列表。
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "获取商品分类成功",
+  "data": [
+    { "id": 1, "name": "国产水果", "parent_id": 0, "sort_order": 1, "is_show": 1 },
+    { "id": 2, "name": "进口水果", "parent_id": 0, "sort_order": 2, "is_show": 1 }
+  ]
+}
+```
+
+---
+
+#### 获取商品 SKU 列表
+
+```
+GET /api/goods/admin/{goodsId}/skus
+```
+
+认证：管理员（Bearer Token）
+
+根据商品 ID 返回该商品下所有 SKU 的完整信息，用于编辑弹框中的 SKU 配置。
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "获取 SKU 列表成功",
+  "data": {
+    "goodsId": 1,
+    "goodsName": "山东红富士苹果",
+    "skus": [
+      {
+        "id": 1,
+        "fruit_id": 1,
+        "spec_name": "5斤装",
+        "weight": "5.00",
+        "price": "29.90",
+        "original_price": "39.90",
+        "stock": 100,
+        "sku_code": "SKUMK4XG2C8AB3XY",
+        "sales": 0,
+        "image": "/uploads/goods/xxx/sku1.jpg",
+        "created_at": "2026-05-19T12:00:00.000Z",
+        "updated_at": "2026-05-19T12:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "fruit_id": 1,
+        "spec_name": "10斤装",
+        "weight": "10.00",
+        "price": "49.90",
+        "original_price": "69.90",
+        "stock": 50,
+        "sku_code": "SKUMK4XG2C8YZ1234",
+        "sales": 5,
+        "image": "/uploads/goods/xxx/sku2.jpg",
+        "created_at": "2026-05-19T12:00:00.000Z",
+        "updated_at": "2026-05-19T12:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
 #### 添加商品
 
 ```
@@ -192,14 +272,14 @@ GET /api/goods/admin/list
 |------|------|------|------|
 | page | number | 否 | 页码，默认 1 |
 | pageSize | number | 否 | 每页数量，默认 10 |
-| keyword | string | 否 | 搜索关键词（模糊匹配商品名称） |
+| name | string | 否 | 搜索关键词（模糊匹配商品名称） |
 | categoryId | number | 否 | 分类 ID 筛选 |
 | status | number | 否 | 状态筛选：0-下架 1-上架 |
 
 请求示例：
 
 ```
-GET /api/goods/admin/list?page=1&pageSize=10&keyword=苹果&categoryId=1&status=1
+GET /api/goods/admin/list?page=1&pageSize=10&name=苹果&categoryId=1&status=1
 ```
 
 响应示例：
@@ -224,20 +304,8 @@ GET /api/goods/admin/list?page=1&pageSize=10&keyword=苹果&categoryId=1&status=
         "sort_order": 1,
         "created_at": "2026-05-19T12:00:00.000Z",
         "updated_at": "2026-05-19T12:00:00.000Z",
-        "fruit_skus": [
-          {
-            "id": 1,
-            "fruit_id": 1,
-            "spec_name": "5斤装",
-            "weight": "5.00",
-            "price": "29.90",
-            "original_price": "39.90",
-            "stock": 100,
-            "sku_code": "SKUMK4XG2C8AB3XY",
-            "sales": 0,
-            "image": "/uploads/apple-5.jpg"
-          }
-        ],
+        "first_sku_price": "29.90",
+        "total_stock": 150,
         "categories": {
           "id": 1,
           "name": "国产水果"
@@ -358,6 +426,124 @@ PATCH /api/goods/admin/{goodsId}/status
   "code": 200,
   "msg": "更改成功",
   "data": { "id": 1, "status": 0 }
+}
+```
+
+---
+
+#### 软删除商品（移入回收站）
+
+```
+DELETE /api/goods/admin/{goodsId}
+```
+
+认证：管理员（Bearer Token）
+
+设置 `deleted_at` 字段为当前时间。已软删除的商品不会出现在商品列表中。
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "已移入回收站",
+  "data": { "id": 1, "deleted_at": "2026-05-20T10:00:00.000Z" }
+}
+```
+
+---
+
+#### 恢复商品（撤销软删除）
+
+```
+PATCH /api/goods/admin/{goodsId}/restoregoods
+```
+
+认证：管理员（Bearer Token）
+
+将 `deleted_at` 字段置为 `null`，商品重新出现在商品列表中。
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "已恢复",
+  "data": { "id": 1, "deleted_at": null }
+}
+```
+
+---
+
+#### 彻底删除商品（物理删除）
+
+```
+DELETE /api/goods/admin/{goodsId}/hard
+```
+
+认证：管理员（Bearer Token）
+
+**前置条件**：商品必须先执行软删除，否则返回错误。
+
+执行逻辑：
+1. 数据库事务中物理删除 fruit 记录（级联删除关联 SKU）
+2. 收集所有关联图片路径（主图 + 副图 + SKU 图片）
+3. 事务成功后删除对应的磁盘文件
+
+若商品有关联订单（order_items）、购物车（carts）等数据，受外键约束保护，无法彻底删除。
+
+响应示例：
+
+```json
+{ "code": 200, "msg": "已彻底删除" }
+```
+
+---
+
+#### 回收站列表
+
+```
+GET /api/goods/admin/recycle
+```
+
+认证：管理员（Bearer Token）
+
+查询参数：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | number | 否 | 页码，默认 1 |
+| pageSize | number | 否 | 每页数量，默认 10 |
+| keyword | string | 否 | 搜索关键词 |
+
+请求示例：
+
+```
+GET /api/goods/admin/recycle?page=1&pageSize=10&keyword=苹果
+```
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "获取回收站列表成功",
+  "data": {
+    "total": 3,
+    "page": 1,
+    "pageSize": 10,
+    "list": [
+      {
+        "id": 5,
+        "name": "已删除的苹果",
+        "deleted_at": "2026-05-20T10:00:00.000Z",
+        "main_image": "/uploads/goods/xxx/main.jpg",
+        "status": 0,
+        "fruit_skus": [ { "id": 10, "spec_name": "5斤装" } ],
+        "categories": { "id": 1, "name": "国产水果" }
+      }
+    ]
+  }
 }
 ```
 
