@@ -92,7 +92,7 @@
           show-overflow-tooltip
         />
         <el-table-column label="分类" width="100" align="center">
-          <template #default="{ row }">{{ row.category_name }}</template>
+          <template #default="{ row }">{{ row.categories?.name }}</template>
         </el-table-column>
         <el-table-column label="价格" width="100" align="center">
           <template #default="{ row }"
@@ -427,6 +427,7 @@ const fetchList = async () => {
       page: pager.page,
       pageSize: pager.pageSize,
     })
+    console.log(res)
     list.value = res.list ?? []
     pager.total = res.total ?? 0
   } catch {
@@ -741,9 +742,7 @@ const handleSubmit = async () => {
       await createGoods(buildFormData())
       ElMessage.success('添加成功')
     } else {
-      // 编辑仍走 JSON（update 接口非 form-data）
-      form.images = JSON.stringify(subImageEntries.value.map((e) => e.url))
-      await updateGoods(editingId.value!, { ...form })
+      await updateGoods(editingId.value!, buildFormData())
       ElMessage.success('编辑成功')
     }
     dialogVisible.value = false
