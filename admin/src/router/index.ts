@@ -25,6 +25,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '商品页', requiresAuth: true, permission: 'goods' },
       },
       {
+        path: 'goods/category',
+        name: 'GoodsCategory',
+        component: () => import('@/views/goods/category.vue'),
+        meta: { title: '商品分类', requiresAuth: true, permission: 'goods' },
+      },
+      {
         path: 'goods/recycle',
         name: 'GoodsRecycle',
         component: () => import('@/views/goods/recycle.vue'),
