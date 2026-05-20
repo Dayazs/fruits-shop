@@ -1,22 +1,40 @@
 import { Request, Response } from 'express'
 import { goodsService } from '../service/goods.service'
-import { removeDir, persistGoodsImages } from '../utils/file'
+import {
+  removeDir,
+  persistGoodsImages,
+  moveToGoodsDir,
+  deleteFileByUrl,
+} from '../utils/file'
+import prisma from '../lib/prisma'
+
+// 从 req.files 中提取 SKU 图片，按索引准确匹配：sku_image_0 → sku0, sku_image_1 → sku1
+const extractSkuImages = (
+  files: Express.Multer.File[] | undefined,
+): Map<number, Express.Multer.File> => {
+  const map = new Map<number, Express.Multer.File>()
+  if (!files) return map
+  for (const f of files) {
+    const match = f.fieldname.match(/^sku_image_(\d+)$/)
+    if (match) {
+      map.set(parseInt(match[1]), f)
+    }
+  }
+  return map
+}
 
 // 添加商品
 export const createGoods = async (req: Request, res: Response) => {
-  // 临时目录由 autoCleanupTemp 中间件在响应结束后统一清理
   let goodsDir = ''
 
   try {
     const files = req.files as Express.Multer.File[] | undefined
 
-    // 从 multipart/form-data 中提取文件
     const mainImageFile = files?.find((f) => f.fieldname === 'main_image')
     const imageFiles = files?.filter((f) => f.fieldname === 'images') || []
-    const skuImageFiles =
-      files?.filter((f) => f.fieldname === 'sku_image') || []
+    const skuImageMap = extractSkuImages(files)
 
-    // 解析 JSON 字段（multipart 中为字符串）
+    // 解析 JSON 字段
     let skus = req.body.skus
     if (typeof skus === 'string') {
       skus = JSON.parse(skus)
@@ -32,7 +50,6 @@ export const createGoods = async (req: Request, res: Response) => {
       ? parseInt(req.body.sort_order as string)
       : 0
 
-    // 参数校验
     if (
       !name ||
       !category_id ||
@@ -64,37 +81,42 @@ export const createGoods = async (req: Request, res: Response) => {
       }
     }
 
-    // 将文件从临时目录迁移到正式目录
     const goodsDirName = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`
 
-    const {
-      mainImageRelPath,
-      imageRelPaths,
-      skuImageRelPaths,
-      goodsDir: gd,
-    } = persistGoodsImages(
+    // 迁移主图、副图
+    const persistResult = persistGoodsImages(
       req.tempDir || '',
       goodsDirName,
       mainImageFile,
       imageFiles,
-      skuImageFiles,
+      [], // SKU 图片单独处理
     )
 
-    goodsDir = gd
+    goodsDir = persistResult.goodsDir
 
-    // 将图片路径挂到 skus 上（按索引顺序对应）
+    // 按索引迁移 SKU 图片，确保图片准确关联到正确的 SKU
+    const skuImageRelPaths: string[] = []
+    for (let i = 0; i < skus.length; i++) {
+      const skuFile = skuImageMap.get(i)
+      if (skuFile) {
+        const relPath = moveToGoodsDir(req.tempDir || '', goodsDirName, skuFile)
+        skuImageRelPaths.push(relPath)
+      } else {
+        skuImageRelPaths.push('')
+      }
+    }
+
     const skusWithImages = skus.map((sku: any, index: number) => ({
       ...sku,
       image: skuImageRelPaths[index] || sku.image || '',
     }))
 
-    // 写入数据库
     const data = await goodsService.createGoods(
       name,
       category_id,
       description,
-      mainImageRelPath,
-      JSON.stringify(imageRelPaths),
+      persistResult.mainImageRelPath,
+      JSON.stringify(persistResult.imageRelPaths),
       status,
       sort_order,
       skusWithImages,
@@ -102,7 +124,6 @@ export const createGoods = async (req: Request, res: Response) => {
 
     res.status(200).json({ code: 200, msg: '添加商品成功', data })
   } catch (err: any) {
-    // 数据库写入失败：回滚已迁移的正式文件
     removeDir(goodsDir)
     res.status(500).json({ code: 500, msg: err.message || '添加商品失败' })
   }
@@ -133,5 +154,183 @@ export const getAdminGoodsList = async (req: Request, res: Response) => {
     res.status(200).json({ code: 200, msg: '获取商品列表成功', data })
   } catch (err: any) {
     res.status(500).json({ code: 500, msg: err.message || '获取商品列表失败' })
+  }
+}
+
+// 设置商品状态（上架/下架）
+export const toggleGoodsStatus = async (req: Request, res: Response) => {
+  try {
+    const { goodsId } = req.params
+    const data = await goodsService.toggleGoodsStatus(Number(goodsId))
+    return res.status(200).json({ code: 200, msg: '更改成功', data })
+  } catch (err: any) {
+    return res.status(403).json({ code: 403, msg: err.message })
+  }
+}
+
+// 编辑商品信息
+export const updateGoods = async (req: Request, res: Response) => {
+  const goodsId = parseInt(req.params.goodsId as string)
+  // 记录本次迁移的新文件路径，DB 失败时需要回滚
+  const newFilePaths: string[] = []
+  // 记录 DB 成功后要删除的旧文件路径
+  const oldFilePathsToDelete: string[] = []
+
+  try {
+    const files = req.files as Express.Multer.File[] | undefined
+
+    // 提取文件
+    const mainImageFile = files?.find((f) => f.fieldname === 'main_image')
+    const imageFiles = files?.filter((f) => f.fieldname === 'images') || []
+    const skuImageMap = extractSkuImages(files)
+
+    // 解析 JSON 字段
+    let skus = req.body.skus
+    if (typeof skus === 'string') {
+      skus = JSON.parse(skus)
+    }
+    let keepImages: string[] = []
+    if (typeof req.body.keep_images === 'string') {
+      keepImages = JSON.parse(req.body.keep_images)
+    }
+
+    // 构建更新对象（仅包含传入的字段）
+    const updates: any = {}
+
+    if (req.body.name !== undefined) updates.name = req.body.name
+    if (req.body.category_id !== undefined)
+      updates.category_id = parseInt(req.body.category_id as string)
+    if (req.body.description !== undefined)
+      updates.description = req.body.description
+    if (req.body.status !== undefined)
+      updates.status = parseInt(req.body.status as string)
+    if (req.body.sort_order !== undefined)
+      updates.sort_order = parseInt(req.body.sort_order as string)
+
+    // 查询现有商品数据（用于图片旧路径对比和 SKU 管理）
+    const existing = await prisma.fruits.findUnique({
+      where: { id: goodsId },
+      include: { fruit_skus: true },
+    })
+    if (!existing) {
+      return res.status(404).json({ code: 404, msg: '商品不存在' })
+    }
+
+    // 确定 goods 目录名（沿用已有路径前缀，不存在则创建新目录）
+    let goodsDirName = ''
+    if (existing.main_image) {
+      const parts = existing.main_image.split('/')
+      // /uploads/goods/{dirName}/file.jpg → parts[3]
+      goodsDirName = parts[3] || ''
+    }
+    if (!goodsDirName) {
+      goodsDirName = `${Date.now().toString(36)}${Math.random().toString(36).substring(2, 6)}`
+    }
+
+    // --- 处理主图 ---
+    if (mainImageFile) {
+      const newPath = moveToGoodsDir(
+        req.tempDir || '',
+        goodsDirName,
+        mainImageFile,
+      )
+      if (newPath) {
+        updates.main_image = newPath
+        newFilePaths.push(newPath)
+        if (existing.main_image) {
+          oldFilePathsToDelete.push(existing.main_image)
+        }
+      }
+    }
+
+    // --- 处理副图：keep_images + 新上传文件 = 最终列表 ---
+    if (req.body.keep_images !== undefined || imageFiles.length > 0) {
+      const newImagePaths: string[] = []
+      for (const f of imageFiles) {
+        const relPath = moveToGoodsDir(req.tempDir || '', goodsDirName, f)
+        if (relPath) {
+          newImagePaths.push(relPath)
+          newFilePaths.push(relPath)
+        }
+      }
+      // 最终副图 = 保留的旧图 + 新上传的图
+      const finalImages = [...keepImages, ...newImagePaths]
+      updates.images = JSON.stringify(finalImages)
+
+      // 标记被删除的旧副图文件
+      if (existing.images) {
+        try {
+          const oldImages: string[] = JSON.parse(existing.images)
+          for (const oldUrl of oldImages) {
+            if (!keepImages.includes(oldUrl)) {
+              oldFilePathsToDelete.push(oldUrl)
+            }
+          }
+        } catch {
+          // 旧数据无法解析，忽略
+        }
+      }
+    }
+
+    // --- 处理 SKU ---
+    if (skus) {
+      const processedSkus = skus.map((sku: any, index: number) => {
+        const processed = { ...sku }
+
+        // 按索引匹配 SKU 图片
+        const skuFile = skuImageMap.get(index)
+        if (skuFile) {
+          const newPath = moveToGoodsDir(
+            req.tempDir || '',
+            goodsDirName,
+            skuFile,
+          )
+          if (newPath) {
+            processed.image = newPath
+            newFilePaths.push(newPath)
+          }
+        }
+
+        // 记录待删除的旧 SKU 图片
+        if (skuFile && sku.id && existing.fruit_skus) {
+          const oldSku = existing.fruit_skus.find((s) => s.id === sku.id)
+          if (oldSku?.image) {
+            oldFilePathsToDelete.push(oldSku.image)
+          }
+        }
+
+        return processed
+      })
+
+      // 标记被删除 SKU 的图片（整条 SKU 被删除时）
+      if (existing.fruit_skus) {
+        const incomingIds: number[] = skus
+          .map((s: any) => s.id)
+          .filter(Boolean)
+        for (const oldSku of existing.fruit_skus) {
+          if (!incomingIds.includes(oldSku.id) && oldSku.image) {
+            oldFilePathsToDelete.push(oldSku.image)
+          }
+        }
+      }
+
+      updates.skus = processedSkus
+    }
+
+    // --- 数据库事务 ---
+    const data = await goodsService.updateGoods(goodsId, updates)
+
+    // 数据库成功后：删除旧文件
+    for (const oldPath of oldFilePathsToDelete) {
+      deleteFileByUrl(oldPath)
+    }
+
+    res.status(200).json({ code: 200, msg: '编辑商品成功', data })
+  } catch (err: any) {
+    // 数据库失败：回滚已迁移的新文件
+    for (const newPath of newFilePaths) {
+      deleteFileByUrl(newPath)
+    }
+    res.status(500).json({ code: 500, msg: err.message || '编辑商品失败' })
   }
 }
