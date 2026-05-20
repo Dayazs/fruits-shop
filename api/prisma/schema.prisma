@@ -132,6 +132,7 @@ model fruits {
   images      String?       @db.Text
   status      Int?          @default(1) @db.TinyInt
   sort_order  Int?          @default(0)
+  deleted_at  DateTime?     @db.DateTime(0)
   created_at  DateTime      @db.DateTime(0)
   updated_at  DateTime      @db.DateTime(0)
   banners     banners[]
@@ -142,6 +143,7 @@ model fruits {
   order_items order_items[]
 
   @@index([category_id], map: "category_id")
+  @@index([deleted_at], map: "idx_deleted_at")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
