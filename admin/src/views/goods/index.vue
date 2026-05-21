@@ -260,13 +260,27 @@
         <!-- SKU 配置 -->
         <el-divider content-position="left">SKU 配置</el-divider>
         <div class="sku-section">
+          <el-row :gutter="10" class="sku-header">
+            <el-col :span="5"><span class="sku-label">SKU 名称</span></el-col>
+            <el-col :span="3"><span class="sku-label">单位(克)</span></el-col>
+            <el-col :span="4"><span class="sku-label">价格</span></el-col>
+            <el-col :span="4"><span class="sku-label">原价</span></el-col>
+            <el-col :span="3"><span class="sku-label">库存</span></el-col>
+            <el-col :span="5" />
+          </el-row>
           <div v-for="(sku, i) in form.skus" :key="i" class="sku-row">
             <el-row :gutter="10" align="middle">
               <el-col :span="5">
                 <el-input v-model="sku.spec_name" placeholder="规格名" />
               </el-col>
-              <el-col :span="2">
-                <el-input v-model="sku.weight" placeholder="重量" />
+              <el-col :span="3">
+                <el-input-number
+                  v-model="sku.weight"
+                  :min="0"
+                  :controls="false"
+                  placeholder="克"
+                  style="width: 100%"
+                />
               </el-col>
               <el-col :span="4">
                 <el-input-number
@@ -296,7 +310,7 @@
                   style="width: 100%"
                 />
               </el-col>
-              <el-col :span="3">
+              <el-col :span="2">
                 <el-upload
                   class="sku-upload"
                   :auto-upload="false"
@@ -603,7 +617,7 @@ const defaultSku = (): GoodsSku => ({
 
 const defaultForm = (): GoodsForm => ({
   name: '',
-  category_id: 1,
+  category_id: undefined as unknown as number,
   description: '',
   main_image: '',
   images: '',
@@ -775,8 +789,8 @@ const validateSkus = (): boolean => {
       ElMessage.warning(`${idx}规格名称不能为纯数字或纯英文字母`)
       return false
     }
-    if (!s.weight || !s.weight.trim()) {
-      ElMessage.warning(`${idx}请输入重量`)
+    if (!s.weight || Number(s.weight) <= 0) {
+      ElMessage.warning(`${idx}请输入有效的重量（大于 0）`)
       return false
     }
     if (!s.price || Number(s.price) <= 0) {
@@ -948,6 +962,15 @@ fetchList()
 /* SKU */
 .sku-section {
   padding: 0 12px;
+}
+
+.sku-header {
+  margin-bottom: 6px;
+}
+
+.sku-label {
+  font-size: 12px;
+  color: #909399;
 }
 
 .sku-row {
