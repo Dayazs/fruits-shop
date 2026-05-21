@@ -47,8 +47,8 @@ router.get('/admin/recycle', ...withAuth, getRecycleBin)
 router.post('/admin/create', ...withUpload, createGoods)
 
 // ─── 分类增/改/删（固定 "categories" 段，在 :goodsId 前）───
-router.post('/admin/categories', ...withAuth, createCategory)
-router.patch('/admin/categories/:categoryId', ...withAuth, updateCategory)
+router.post('/admin/categories', ...withUpload, createCategory)
+router.patch('/admin/categories/:categoryId', ...withUpload, updateCategory)
 router.delete('/admin/categories/:categoryId', ...withAuth, deleteCategory)
 
 // ─── :goodsId 参数路由 ───
