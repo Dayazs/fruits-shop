@@ -19,6 +19,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '首页', requiresAuth: true, permission: 'dashboard' },
       },
       {
+        path: 'banner',
+        name: 'Banner',
+        component: () => import('@/views/banner/index.vue'),
+        meta: { title: '轮播图管理', requiresAuth: true, permission: 'dashboard' },
+      },
+      {
         path: 'goods',
         name: 'Goods',
         component: () => import('@/views/goods/index.vue'),
