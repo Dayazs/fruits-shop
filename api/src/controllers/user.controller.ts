@@ -71,7 +71,11 @@ export const updateProfile = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id
     const { avatar, username, mobile } = req.body
-    const data = await userService.updateProfile(userId, { avatar, username, mobile })
+    const data = await userService.updateProfile(userId, {
+      avatar,
+      username,
+      mobile,
+    })
     res.status(200).json({ code: 200, msg: '更新用户信息成功', data })
   } catch (err: any) {
     res.status(400).json({ code: 400, msg: err.message })
@@ -84,10 +88,27 @@ export const updateProfile = async (req: Request, res: Response) => {
 export const createAddress = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id
-    const { receiver_name, receiver_mobile, province, city, district, detail_address, is_default } = req.body
+    const {
+      receiver_name,
+      receiver_mobile,
+      province,
+      city,
+      district,
+      detail_address,
+      is_default,
+    } = req.body
 
-    if (!receiver_name || !receiver_mobile || !province || !city || !district || !detail_address) {
-      return res.status(400).json({ code: 400, msg: '收货人、电话和完整地址不能为空' })
+    if (
+      !receiver_name ||
+      !receiver_mobile ||
+      !province ||
+      !city ||
+      !district ||
+      !detail_address
+    ) {
+      return res
+        .status(400)
+        .json({ code: 400, msg: '收货人、电话和完整地址不能为空' })
     }
 
     const data = await userService.createAddress(userId, {
@@ -122,7 +143,15 @@ export const updateAddress = async (req: Request, res: Response) => {
   try {
     const userId = req.user.id
     const addressId = parseInt(req.params.addressId as string)
-    const { receiver_name, receiver_mobile, province, city, district, detail_address, is_default } = req.body
+    const {
+      receiver_name,
+      receiver_mobile,
+      province,
+      city,
+      district,
+      detail_address,
+      is_default,
+    } = req.body
 
     const data = await userService.updateAddress(addressId, userId, {
       receiver_name,
