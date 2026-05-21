@@ -10,15 +10,18 @@ src
 │  ├─ index.ts                 // 路由汇总
 │  ├─ user.route.ts            // 用户路由
 │  ├─ admin.route.ts           // 管理员路由
-│  └─ goods.route.ts           // 商品路由
+│  ├─ goods.route.ts           // 商品路由
+│  └─ banner.route.ts          // 轮播图路由
 ├─ controllers/                // 控制器层
 │  ├─ user.controller.ts       // 用户控制器
 │  ├─ admin.controller.ts      // 管理员控制器
-│  └─ goods.controller.ts      // 商品控制器
+│  ├─ goods.controller.ts      // 商品控制器
+│  └─ banner.controller.ts     // 轮播图控制器
 ├─ service/                    // 业务层
 │  ├─ user.service.ts          // 用户业务
 │  ├─ admin.service.ts         // 管理员业务
-│  └─ goods.service.ts         // 商品业务
+│  ├─ goods.service.ts         // 商品业务
+│  └─ banner.service.ts        // 轮播图业务
 ├─ middleware/                  // 中间件
 │  ├─ auth.ts                  // 认证 + 管理员权限
 │  └─ upload.ts                // 文件上传
@@ -245,6 +248,65 @@ DELETE /api/user/addresses/{addressId}
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
 | POST | `/login` | 管理员登录 | 否 |
+
+---
+
+### 轮播图接口 `/api/banners`
+
+管理员专属接口。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/` | 获取轮播图列表 |
+| POST | `/` | 添加轮播图（multipart） |
+| PATCH | `/{bannerId}` | 编辑轮播图（multipart） |
+| DELETE | `/{bannerId}` | 删除轮播图 |
+
+#### 添加轮播图
+
+```
+POST /api/banners
+Content-Type: multipart/form-data
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title | string | 是 | 标题 |
+| image | file | 是 | 轮播图图片 |
+| fruit_id | string | 是 | 关联商品 ID |
+| sort_order | string | 是 | 排序 |
+| status | string | 是 | 状态：0-不显示 1-显示 |
+| link_url | string | 否 | 外链 URL |
+
+#### 编辑轮播图
+
+```
+PATCH /api/banners/{bannerId}
+Content-Type: multipart/form-data
+```
+
+所有字段可选。上传新图片时会自动删除旧文件。
+
+#### 响应示例
+
+```json
+{
+  "code": 200,
+  "msg": "获取轮播图列表成功",
+  "data": [
+    {
+      "id": 1,
+      "title": "夏日水果特惠",
+      "image_url": "/uploads/goods/banners/img.jpg",
+      "fruit_id": 1,
+      "link_url": null,
+      "sort_order": 1,
+      "status": 1,
+      "fruits": { "id": 1, "name": "山东红富士苹果" }
+    }
+  ]
+}
+```
 
 ---
 
