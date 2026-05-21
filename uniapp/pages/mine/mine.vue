@@ -81,6 +81,9 @@
 				</view>
 			</view>
 		</view>
+
+		<!-- 引入tabBar -->
+		<CustomTabBar />
 	</view>
 </template>
 
@@ -96,6 +99,7 @@
 	import {
 		userApi
 	} from '@/utils/api.js'
+	import CustomTabBar from '@/components/custom-tab-bar.vue'
 
 	const isLoggedIn = ref(false)
 	const agreed = ref(false)
@@ -162,6 +166,7 @@
 					const res = await userApi.wxLogin({
 						code: loginRes.code
 					})
+					console.log(res)
 					uni.setStorageSync('token', res.data.token)
 					Object.assign(userInfo, res.data)
 					isLoggedIn.value = true
