@@ -3,12 +3,11 @@
     <text class="title">购物车</text>
     <text class="subtitle">暂无商品</text>
   </view>
+  <CustomTabBar />
 </template>
 
-<script>
-export default {
-  name: 'CartPage'
-}
+<script setup>
+import CustomTabBar from '@/components/custom-tab-bar.vue'
 </script>
 
 <style>
