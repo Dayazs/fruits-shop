@@ -16,9 +16,14 @@
           active-text-color="#409EFF"
           router
         >
-          <el-menu-item index="/">
+          <el-menu-item index="/dashboard">
             <el-icon><home-filled /></el-icon>
             <template #title>首页</template>
+          </el-menu-item>
+
+          <el-menu-item index="/banner">
+            <el-icon><picture-filled /></el-icon>
+            <template #title>轮播图管理</template>
           </el-menu-item>
 
           <el-sub-menu index="goods">
@@ -66,7 +71,7 @@
             </el-menu-item>
           </el-sub-menu>
 
-          <el-sub-menu index="marketing">
+          <!-- <el-sub-menu index="marketing">
             <template #title>
               <el-icon><present /></el-icon>
               <span>营销管理</span>
@@ -75,11 +80,11 @@
               <el-icon><discount /></el-icon>
               <span>优惠券</span>
             </el-menu-item>
-            <el-menu-item index="banner">
+            <el-menu-item index="/banner">
               <el-icon><picture-filled /></el-icon>
               <span>轮播图</span>
             </el-menu-item>
-          </el-sub-menu>
+          </el-sub-menu> -->
 
           <el-sub-menu index="system">
             <template #title>
