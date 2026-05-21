@@ -3,12 +3,11 @@
     <text class="title">水果商城</text>
     <text class="subtitle">新鲜水果，每日直达</text>
   </view>
+  <CustomTabBar />
 </template>
 
-<script>
-export default {
-  name: 'HomePage'
-}
+<script setup>
+import CustomTabBar from '@/components/custom-tab-bar.vue'
 </script>
 
 <style>
