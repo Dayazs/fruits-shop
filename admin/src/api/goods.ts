@@ -158,16 +158,20 @@ export interface CategoryForm {
   is_show?: number
 }
 
-export function createCategory(data: CategoryForm) {
-  return request.post('/api/goods/admin/categories', data)
+export function createCategory(formData: FormData) {
+  return request.post('/api/goods/admin/categories', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }
 
 export function getCategories() {
   return request.get<unknown, Category[]>('/api/goods/admin/categories')
 }
 
-export function updateCategory(id: number, data: CategoryForm) {
-  return request.patch(`/api/goods/admin/categories/${id}`, data)
+export function updateCategory(id: number, formData: FormData) {
+  return request.patch(`/api/goods/admin/categories/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
 }
 
 export function deleteCategory(id: number) {
