@@ -87,10 +87,10 @@ export const goodsService = {
     parent_id?: number
     sort_order?: number
     is_show?: number
+    image?: string
   }) {
-    const { name, parent_id = 0, sort_order = 0, is_show = 1 } = params
+    const { name, parent_id = 0, sort_order = 0, is_show = 1, image } = params
 
-    // 如果传了 parent_id，校验父分类是否存在
     if (parent_id !== 0) {
       const parent = await prisma.categories.findFirst({
         where: { id: parent_id },
@@ -108,6 +108,7 @@ export const goodsService = {
         parent_id,
         sort_order,
         is_show,
+        image: image || null,
         created_at: now,
         updated_at: now,
       },
@@ -122,6 +123,7 @@ export const goodsService = {
       sort_order?: number
       is_show?: number
       parent_id?: number
+      image?: string
     },
   ) {
     const category = await prisma.categories.findFirst({
@@ -148,6 +150,7 @@ export const goodsService = {
     if (updates.sort_order !== undefined) data.sort_order = updates.sort_order
     if (updates.is_show !== undefined) data.is_show = updates.is_show
     if (updates.parent_id !== undefined) data.parent_id = updates.parent_id
+    if (updates.image !== undefined) data.image = updates.image
 
     return prisma.categories.update({
       where: { id: categoryId },

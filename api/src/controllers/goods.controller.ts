@@ -261,7 +261,12 @@ export const getCategories = async (req: Request, res: Response) => {
 
 // 添加商品分类
 export const createCategory = async (req: Request, res: Response) => {
+  let imagePath = ''
+
   try {
+    const files = req.files as Express.Multer.File[] | undefined
+    const imageFile = files?.find((f) => f.fieldname === 'image')
+
     const { name, parent_id, sort_order, is_show } = req.body
 
     if (!name) {
@@ -270,35 +275,63 @@ export const createCategory = async (req: Request, res: Response) => {
         .json({ code: 400, msg: '分类名称不能为空' })
     }
 
+    if (imageFile) {
+      imagePath = moveToGoodsDir(req.tempDir || '', 'categories', imageFile)
+    }
+
     const data = await goodsService.createCategory({
       name,
       parent_id,
-      sort_order,
-      is_show,
+      sort_order: Number(sort_order),
+      is_show: Number(is_show),
+      image: imagePath || undefined,
     })
 
     return res.status(200).json({ code: 200, msg: '添加分类成功', data })
   } catch (err: any) {
+    if (imagePath) deleteFileByUrl(imagePath)
     return res.status(400).json({ code: 400, msg: err.message })
   }
 }
 
 // 编辑商品分类
 export const updateCategory = async (req: Request, res: Response) => {
+  let newImagePath = ''
+  let oldImageUrl: string | undefined
+
   try {
     const categoryId = parseInt(req.params.categoryId as string)
+    const files = req.files as Express.Multer.File[] | undefined
+    const imageFile = files?.find((f) => f.fieldname === 'image')
+
     const { name, sort_order, is_show, parent_id } = req.body
 
     const updates: any = {}
     if (name !== undefined) updates.name = name
-    if (sort_order !== undefined) updates.sort_order = sort_order
-    if (is_show !== undefined) updates.is_show = is_show
+    if (sort_order !== undefined) updates.sort_order = Number(sort_order)
+    if (is_show !== undefined) updates.is_show = Number(is_show)
     if (parent_id !== undefined) updates.parent_id = parent_id
+
+    if (imageFile) {
+      newImagePath = moveToGoodsDir(req.tempDir || '', 'categories', imageFile)
+      updates.image = newImagePath
+
+      const oldCategory = await prisma.categories.findFirst({
+        where: { id: categoryId },
+        select: { image: true },
+      })
+      if (oldCategory?.image) {
+        oldImageUrl = oldCategory.image
+      }
+    }
 
     const data = await goodsService.updateCategory(categoryId, updates)
 
+    if (oldImageUrl) deleteFileByUrl(oldImageUrl)
+
     return res.status(200).json({ code: 200, msg: '编辑分类成功', data })
   } catch (err: any) {
+    if (newImagePath) deleteFileByUrl(newImagePath)
     return res.status(400).json({ code: 400, msg: err.message })
   }
 }
@@ -307,7 +340,17 @@ export const updateCategory = async (req: Request, res: Response) => {
 export const deleteCategory = async (req: Request, res: Response) => {
   try {
     const categoryId = parseInt(req.params.categoryId as string)
+
+    const category = await prisma.categories.findFirst({
+      where: { id: categoryId },
+      select: { image: true },
+    })
+
     const data = await goodsService.deleteCategory(categoryId)
+
+    if (category?.image) {
+      deleteFileByUrl(category.image)
+    }
 
     return res.status(200).json({ code: 200, msg: '删除分类成功', data })
   } catch (err: any) {
