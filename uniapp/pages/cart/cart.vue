@@ -1,6 +1,5 @@
 <template>
 	<view class="page">
-		<!-- ========== 顶部统计栏（固定不随滚动） ========== -->
 		<view v-if="cartList.length > 0" class="stats-bar">
 			<view class="select-all" @tap="toggleSelectAll">
 				<view class="checkbox" :class="{ checked: isAllSelected }">
@@ -13,25 +12,19 @@
 			</text>
 		</view>
 
-		<!-- 占位（补偿 stats-bar 的固定定位高度） -->
 		<view v-if="cartList.length > 0" class="stats-placeholder"></view>
 
-		<!-- ========== 购物车列表 ========== -->
 		<view v-if="cartList.length > 0" class="cart-list">
 			<view class="cart-item" v-for="item in cartList" :key="item.id">
 				<view class="checkbox" :class="{ checked: selectedIds.has(item.id) }" @tap="toggleSelect(item.id)">
 					<text v-if="selectedIds.has(item.id)" class="check-mark">&#10003;</text>
 				</view>
-
 				<image class="item-image" :src="IMG_BASE + getItemImage(item)" mode="aspectFill"></image>
-
 				<view class="item-info">
 					<text class="item-name">{{ item.fruits.name }}</text>
 					<text class="item-spec">{{ item.fruit_skus.spec_name }}</text>
 					<text class="item-price">&#165;{{ formatPrice(item.fruit_skus.price) }}</text>
 				</view>
-
-
 				<view class="item-actions">
 					<view class="qty-row">
 						<view class="qty-btn" :class="{ disabled: item.quantity <= 1 }" @tap="handleMinus(item)">
@@ -52,14 +45,12 @@
 			</view>
 		</view>
 
-		<!-- ========== 空状态 ========== -->
 		<view v-else-if="!loading" class="empty-state">
 			<text class="empty-icon">&#128722;</text>
 			<text class="empty-text">空空如也，去逛逛吧</text>
 			<button class="go-shop-btn" @tap="handleGoShop">继续逛逛</button>
 		</view>
 
-		<!-- ========== 底部结算栏 ========== -->
 		<view v-if="cartList.length > 0" class="settle-bar">
 			<view class="settle-left">
 				<text class="settle-label">合计：</text>
@@ -88,6 +79,9 @@
 		userApi,
 		IMG_BASE
 	} from '@/utils/api.js'
+	import {
+		refreshCartCount
+	} from '@/stores/cart.js'
 
 	const cartList = ref([])
 	const loading = ref(true)
@@ -96,19 +90,13 @@
 	const totalItems = computed(() =>
 		cartList.value.reduce((sum, i) => sum + i.quantity, 0)
 	)
-
 	const selectedCount = computed(() =>
-		cartList.value
-		.filter(i => selectedIds.value.has(i.id))
-		.reduce((sum, i) => sum + i.quantity, 0)
+		cartList.value.filter(i => selectedIds.value.has(i.id)).reduce((sum, i) => sum + i.quantity, 0)
 	)
-
 	const selectedTotal = computed(() =>
-		cartList.value
-		.filter(i => selectedIds.value.has(i.id))
-		.reduce((sum, i) => sum + Number(i.fruit_skus.price) * i.quantity, 0)
+		cartList.value.filter(i => selectedIds.value.has(i.id)).reduce((sum, i) => sum + Number(i.fruit_skus.price) * i
+			.quantity, 0)
 	)
-
 	const isAllSelected = computed(() =>
 		cartList.value.length > 0 && cartList.value.every(i => selectedIds.value.has(i.id))
 	)
@@ -116,7 +104,6 @@
 	onLoad(() => {
 		fetchCartList()
 	})
-
 	onShow(() => {
 		fetchCartList()
 	})
@@ -125,12 +112,13 @@
 		try {
 			const token = uni.getStorageSync('token')
 			if (!token) {
-				cartList.value = []
-				loading.value = false
+				cartList.value = [];
+				loading.value = false;
 				return
 			}
 			const res = await userApi.getCartList()
 			cartList.value = res.data || []
+			refreshCartCount()
 			const validIds = new Set(cartList.value.map(i => i.id))
 			for (const id of selectedIds.value) {
 				if (!validIds.has(id)) selectedIds.value.delete(id)
@@ -153,20 +141,14 @@
 	}
 
 	function toggleSelect(id) {
-		if (selectedIds.value.has(id)) {
-			selectedIds.value.delete(id)
-		} else {
-			selectedIds.value.add(id)
-		}
+		if (selectedIds.value.has(id)) selectedIds.value.delete(id)
+		else selectedIds.value.add(id)
 		selectedIds.value = new Set(selectedIds.value)
 	}
 
 	function toggleSelectAll() {
-		if (isAllSelected.value) {
-			selectedIds.value = new Set()
-		} else {
-			selectedIds.value = new Set(cartList.value.map(i => i.id))
-		}
+		if (isAllSelected.value) selectedIds.value = new Set()
+		else selectedIds.value = new Set(cartList.value.map(i => i.id))
 	}
 
 	const handlePlus = async (item) => {
@@ -176,6 +158,7 @@
 				quantity: newQty
 			})
 			item.quantity = newQty
+			refreshCartCount()
 		} catch (err) {
 			uni.showToast({
 				title: err.msg || '更新失败',
@@ -183,7 +166,6 @@
 			})
 		}
 	}
-
 	const handleMinus = async (item) => {
 		if (item.quantity <= 1) return
 		const newQty = item.quantity - 1
@@ -192,6 +174,7 @@
 				quantity: newQty
 			})
 			item.quantity = newQty
+			refreshCartCount()
 		} catch (err) {
 			uni.showToast({
 				title: err.msg || '更新失败',
@@ -199,7 +182,6 @@
 			})
 		}
 	}
-
 	const handleRemove = (item) => {
 		uni.showModal({
 			title: '提示',
@@ -211,6 +193,7 @@
 						selectedIds.value.delete(item.id)
 						selectedIds.value = new Set(selectedIds.value)
 						cartList.value = cartList.value.filter(c => c.id !== item.id)
+						refreshCartCount()
 						uni.showToast({
 							title: '已移出',
 							icon: 'success'
@@ -225,14 +208,12 @@
 			}
 		})
 	}
-
 	const handleCheckout = () => {
 		uni.showToast({
 			title: '功能开发中',
 			icon: 'none'
 		})
 	}
-
 	const handleGoShop = () => {
 		uni.switchTab({
 			url: '/pages/category/category'
@@ -247,7 +228,6 @@
 		padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
 	}
 
-	/* ========== 顶部统计栏（固定） ========== */
 	.stats-bar {
 		position: fixed;
 		top: 0;
@@ -282,7 +262,6 @@
 		color: #666;
 	}
 
-	/* ========== 购物车列表 ========== */
 	.cart-list {
 		padding: 20rpx;
 	}
@@ -296,7 +275,6 @@
 		margin-bottom: 16rpx;
 	}
 
-	/* 复选框 */
 	.checkbox {
 		width: 40rpx;
 		height: 40rpx;
@@ -360,7 +338,6 @@
 		font-weight: bold;
 	}
 
-	/* ========== 右侧操作区 ========== */
 	.item-actions {
 		flex-shrink: 0;
 		display: flex;
@@ -407,8 +384,8 @@
 		display: flex;
 		flex-direction: row;
 		align-items: center;
+		margin-top: 35rpx;
 		gap: 12rpx;
-		margin-top: 30rpx;
 	}
 
 	.item-subtotal {
@@ -431,7 +408,6 @@
 		border: none;
 	}
 
-	/* ========== 底部结算栏 ========== */
 	.settle-bar {
 		position: fixed;
 		bottom: calc(100rpx + env(safe-area-inset-bottom));
@@ -472,14 +448,14 @@
 		font-size: 30rpx;
 		border-radius: 12rpx;
 		border: none;
-		margin-right: 20rpx;
+		margin-left: auto;
 	}
 
 	.settle-btn.disabled {
 		background-color: #a0d9b8;
+		margin-right: 20rpx;
 	}
 
-	/* ========== 空状态 ========== */
 	.empty-state {
 		display: flex;
 		flex-direction: column;
