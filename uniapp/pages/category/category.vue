@@ -110,9 +110,8 @@ const handleGoodsTap = (goods) => {
 }
 
 const handleAddToCart = async (goods) => {
-  if (!goods.first_sku_id) return
   try {
-    await userApi.addToCart({ fruit_id: goods.id, sku_id: goods.first_sku_id })
+    await userApi.addToCart({ fruit_id: goods.id })
     await refreshCartCount()
     uni.showToast({ title: '已加入购物车', icon: 'success' })
   } catch (err) {
