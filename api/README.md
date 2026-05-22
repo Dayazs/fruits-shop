@@ -129,20 +129,38 @@ Content-Type: application/json
 
 ---
 
-#### 获取/更新用户信息
+#### 获取用户信息
 
 ```
-GET    /api/user/profile    → 获取当前用户信息
-PATCH  /api/user/profile    → 更新用户信息
+GET /api/user/profile
 ```
 
 认证：是（Bearer Token）
 
-##### 更新用户信息请求体（JSON）
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "获取用户信息成功",
+  "data": { "id": 1, "username": "小明", "avatar": "/uploads/goods/user/avatar/img.jpg", "mobile": "18029384792" }
+}
+```
+
+---
+
+#### 更新用户信息
+
+```
+PATCH /api/user/profile
+Content-Type: multipart/form-data
+```
+
+认证：是（Bearer Token）
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| avatar | string | 否 | 头像 URL |
+| avatar | file | 否 | 头像文件（上传新文件后自动删除旧头像） |
 | username | string | 否 | 用户名称 |
 | mobile | string | 否 | 手机号码 |
 
