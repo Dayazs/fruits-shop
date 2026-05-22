@@ -123,10 +123,7 @@
 	}
 
 	const handleGoodsTap = (goods) => {
-		uni.showToast({
-			title: goods.name,
-			icon: 'none'
-		})
+		uni.navigateTo({ url: `/pages/goods-detail/goods-detail?id=${goods.id}` })
 	}
 </script>
 
