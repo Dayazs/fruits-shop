@@ -1,303 +1,173 @@
 <template>
-	<view class="page">
-		<!-- ========== 轮播图 ========== -->
-		<swiper class="banner-swiper" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500"
-			:circular="true" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
-			<swiper-item v-for="banner in banners" :key="banner.id">
-				<image :src="IMG_BASE + banner.image_url" mode="aspectFill" class="banner-image"></image>
-			</swiper-item>
-		</swiper>
+  <view class="page">
+    <swiper class="banner-swiper" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500"
+      :circular="true" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
+      <swiper-item v-for="banner in banners" :key="banner.id">
+        <image :src="IMG_BASE + banner.image_url" mode="aspectFill" class="banner-image"></image>
+      </swiper-item>
+    </swiper>
 
-		<!-- ========== 顶部 4 分类 (sort_order < 100) ========== -->
-		<view class="category-section" v-if="topCategories.length > 0">
-			<view class="category-list">
-				<view class="category-item" v-for="cat in topCategories" :key="cat.id" @tap="handleCategoryTap(cat)">
-					<view class="category-img-wrapper">
-						<view class="category-circle"></view>
-						<image :src="IMG_BASE + cat.image" mode="aspectFit" class="category-img"></image>
-					</view>
-					<text class="category-name">{{ cat.name }}</text>
-				</view>
-			</view>
-		</view>
+    <view class="category-section" v-if="topCategories.length > 0">
+      <view class="category-list">
+        <view class="category-item" v-for="cat in topCategories" :key="cat.id" @tap="handleCategoryTap(cat)">
+          <view class="category-img-wrapper">
+            <view class="category-circle"></view>
+            <image :src="IMG_BASE + cat.image" mode="aspectFit" class="category-img"></image>
+          </view>
+          <text class="category-name">{{ cat.name }}</text>
+        </view>
+      </view>
+    </view>
 
-		<!-- ========== 特殊分类 (sort_order >= 100) ========== -->
-		<view v-for="cat in specialCategories" :key="cat.id" class="special-section">
-			<image :src="IMG_BASE + cat.image" mode="aspectFill" class="special-banner"></image>
-			<view class="goods-grid" v-if="cat.products && cat.products.length > 0">
-				<view class="goods-card" v-for="goods in cat.products" :key="goods.id" @tap="handleGoodsTap(goods)">
-					<image :src="IMG_BASE + goods.main_image" mode="aspectFill" class="goods-img"></image>
-					<text class="goods-name">{{ goods.name }}</text>
-					<view class="goods-price-row">
-						<view class="price-left">
-							<text class="price-current">¥{{ formatPrice(goods.first_sku_price) }}</text>
-							<text v-if="goods.first_sku_original_price"
-								class="price-original">¥{{ formatPrice(goods.first_sku_original_price) }}</text>
-						</view>
-						<view class="cart-btn">
-							<image src="/static/icons/shopping_trolley_item.svg" class="cart-icon" mode="aspectFit">
-							</image>
-						</view>
-					</view>
-				</view>
-			</view>
-		</view>
+    <view v-for="cat in specialCategories" :key="cat.id" class="special-section">
+      <image :src="IMG_BASE + cat.image" mode="aspectFill" class="special-banner"></image>
+      <view class="goods-grid" v-if="cat.products && cat.products.length > 0">
+        <view class="goods-card" v-for="goods in cat.products" :key="goods.id" @tap="handleGoodsTap(goods)">
+          <image :src="IMG_BASE + goods.main_image" mode="aspectFill" class="goods-img"></image>
+          <text class="goods-name">{{ goods.name }}</text>
+          <view class="goods-price-row">
+            <view class="price-left">
+              <text class="price-current">&#165;{{ formatPrice(goods.first_sku_price) }}</text>
+              <text v-if="goods.first_sku_original_price"
+                class="price-original">&#165;{{ formatPrice(goods.first_sku_original_price) }}</text>
+            </view>
+            <view class="cart-btn" @tap.stop="handleAddToCart(goods)">
+              <image src="/static/icons/shopping_trolley_item.svg" class="cart-icon" mode="aspectFit"></image>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
 
-		<!-- ========== 底部占位 ========== -->
-		<view class="placeholder" v-if="specialCategories.length === 0">
-			<text class="placeholder-text">更多内容即将上线</text>
-		</view>
-	</view>
-	<CustomTabBar />
+    <view class="placeholder" v-if="specialCategories.length === 0">
+      <text class="placeholder-text">更多内容即将上线</text>
+    </view>
+  </view>
+  <CustomTabBar />
 </template>
 
 <script setup>
-	import {
-		ref
-	} from 'vue'
-	import {
-		onLoad
-	} from '@dcloudio/uni-app'
-	import CustomTabBar from '@/components/custom-tab-bar.vue'
-	import {
-		homeApi,
-		IMG_BASE
-	} from '@/utils/api.js'
+import { ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import CustomTabBar from '@/components/custom-tab-bar.vue'
+import { homeApi, userApi, IMG_BASE } from '@/utils/api.js'
+import { refreshCartCount } from '@/stores/cart.js'
 
-	const banners = ref([])
-	const topCategories = ref([])
-	const specialCategories = ref([])
+const banners = ref([])
+const topCategories = ref([])
+const specialCategories = ref([])
 
-	onLoad(async () => {
-		try {
-			const [bannerRes, cateRes] = await Promise.all([
-				homeApi.getBanners(),
-				homeApi.getCategories()
-			])
-			banners.value = bannerRes.data || []
+onLoad(async () => {
+  try {
+    const [bannerRes, cateRes] = await Promise.all([
+      homeApi.getBanners(),
+      homeApi.getCategories()
+    ])
+    banners.value = bannerRes.data || []
 
-			const all = (cateRes.data || []).slice()
-			all.sort((a, b) => a.sort_order - b.sort_order)
+    const all = (cateRes.data || []).slice()
+    all.sort((a, b) => a.sort_order - b.sort_order)
 
-			topCategories.value = all.filter(c => c.sort_order < 100).slice(0, 4)
+    topCategories.value = all.filter(c => c.sort_order < 100).slice(0, 4)
 
-			const specialList = all.filter(c => c.sort_order >= 100)
-			specialCategories.value = specialList
+    const specialList = all.filter(c => c.sort_order >= 100)
+    specialCategories.value = specialList
 
-			// 并行加载每个特殊分类下的商品
-			if (specialList.length > 0) {
-				const goodsResults = await Promise.all(
-					specialList.map(cat =>
-						homeApi.getGoods({
-							categoryId: cat.id,
-							pageSize: 4
-						})
-					)
-				)
-				specialCategories.value = specialList.map((cat, i) => ({
-					...cat,
-					products: goodsResults[i]?.data?.list || []
-				}))
-			}
-		} catch (err) {
-			console.error('首页数据加载失败', err)
-		}
-	})
+    if (specialList.length > 0) {
+      const goodsResults = await Promise.all(
+        specialList.map(cat =>
+          homeApi.getGoods({ categoryId: cat.id, pageSize: 4 })
+        )
+      )
+      specialCategories.value = specialList.map((cat, i) => ({
+        ...cat,
+        products: goodsResults[i]?.data?.list || []
+      }))
+    }
+  } catch (err) {
+    console.error('首页数据加载失败', err)
+  }
+})
 
-	function formatPrice(val) {
-		if (val === null || val === undefined) return '--'
-		const num = Number(val)
-		return Number.isInteger(num) ? num.toFixed(0) : num.toFixed(2)
-	}
+function formatPrice(val) {
+  if (val === null || val === undefined) return '--'
+  const num = Number(val)
+  return Number.isInteger(num) ? num.toFixed(0) : num.toFixed(2)
+}
 
-	const handleCategoryTap = (cat) => {
-		uni.showToast({
-			title: cat.name,
-			icon: 'none'
-		})
-	}
+const handleCategoryTap = (cat) => {
+  uni.showToast({ title: cat.name, icon: 'none' })
+}
 
-	const handleGoodsTap = (goods) => {
-		uni.navigateTo({ url: `/pages/goods-detail/goods-detail?id=${goods.id}` })
-	}
+const handleGoodsTap = (goods) => {
+  uni.navigateTo({ url: `/pages/goods-detail/goods-detail?id=${goods.id}` })
+}
+
+const handleAddToCart = async (goods) => {
+  if (!goods.first_sku_id) return
+  try {
+    await userApi.addToCart({ fruit_id: goods.id, sku_id: goods.first_sku_id })
+    await refreshCartCount()
+    uni.showToast({ title: '已加入购物车', icon: 'success' })
+  } catch (err) {
+    uni.showToast({ title: err.msg || '添加失败', icon: 'none' })
+  }
+}
 </script>
 
 <style>
-	.page {
-		min-height: 100vh;
-		background-color: #f5f5f5;
-		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
-	}
+.page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
+}
+.banner-swiper { width: 750rpx; height: 440rpx; }
+.banner-image { width: 750rpx; height: 440rpx; }
 
-	/* ========== 轮播图 ========== */
-	.banner-swiper {
-		width: 750rpx;
-		height: 440rpx;
-	}
+.category-section {
+  width: 750rpx; height: 216rpx; background-color: #fff;
+  display: flex; align-items: center; margin-bottom: 16rpx;
+}
+.category-list { display: flex; width: 750rpx; padding: 0 20rpx; box-sizing: border-box; }
+.category-item { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.category-img-wrapper {
+  position: relative; width: 100rpx; height: 120rpx;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 8rpx;
+}
+.category-circle {
+  position: absolute; width: 75rpx; height: 75rpx; border-radius: 50%;
+  background-color: #82c77c; top: 20%; left: 50%; transform: translate(-50%, 10%);
+}
+.category-img { position: relative; z-index: 1; width: 80rpx; height: 80rpx; }
+.category-name { font-size: 24rpx; color: #333; }
 
-	.banner-image {
-		width: 750rpx;
-		height: 440rpx;
-	}
+.special-section { margin-bottom: 16rpx; background-color: #fff; }
+.special-banner { width: 750rpx; height: 258rpx; display: block; }
 
-	/* ========== 顶部分类 ========== */
-	.category-section {
-		width: 750rpx;
-		height: 216rpx;
-		background-color: #fff;
-		display: flex;
-		align-items: center;
-		margin-bottom: 16rpx;
-	}
+.goods-grid { display: flex; flex-wrap: wrap; padding: 20rpx; justify-content: space-between; }
+.goods-card {
+  width: 335rpx; height: 500rpx; background-color: #fff;
+  border-radius: 12rpx; overflow: hidden; margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.06);
+}
+.goods-img { width: 335rpx; height: 335rpx; display: block; }
+.goods-name {
+  display: block; height: 68rpx; line-height: 68rpx; font-size: 26rpx;
+  color: #333; padding: 0 16rpx; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.goods-price-row {
+  height: 84rpx; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 16rpx;
+}
+.price-left { display: flex; align-items: baseline; gap: 10rpx; }
+.price-current { font-size: 28rpx; font-weight: bold; color: #e74c3c; }
+.price-original { font-size: 22rpx; color: #999; text-decoration: line-through; }
+.cart-btn {
+  width: 56rpx; height: 56rpx; border-radius: 50%; background-color: #09bb07;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.cart-icon { width: 39rpx; height: 39rpx; }
 
-	.category-list {
-		display: flex;
-		width: 750rpx;
-		padding: 0 20rpx;
-		box-sizing: border-box;
-	}
-
-	.category-item {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-	}
-
-	.category-img-wrapper {
-		position: relative;
-		width: 100rpx;
-		height: 120rpx;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		margin-bottom: 8rpx;
-	}
-
-	.category-circle {
-		position: absolute;
-		width: 75rpx;
-		height: 75rpx;
-		border-radius: 50%;
-		background-color: #82c77c;
-		top: 20%;
-		left: 50%;
-		transform: translate(-50%, 10%);
-	}
-
-	.category-img {
-		position: relative;
-		z-index: 1;
-		width: 80rpx;
-		height: 80rpx;
-	}
-
-	.category-name {
-		font-size: 24rpx;
-		color: #333;
-	}
-
-	/* ========== 特殊分类 ========== */
-	.special-section {
-		margin-bottom: 16rpx;
-		background-color: #fff;
-	}
-
-	.special-banner {
-		width: 750rpx;
-		height: 258rpx;
-		display: block;
-	}
-
-	/* ========== 商品网格 ========== */
-	.goods-grid {
-		display: flex;
-		flex-wrap: wrap;
-		padding: 20rpx;
-		justify-content: space-between;
-	}
-
-	.goods-card {
-		width: 335rpx;
-		height: 500rpx;
-		background-color: #fff;
-		border-radius: 12rpx;
-		overflow: hidden;
-		margin-bottom: 20rpx;
-		box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-	}
-
-	.goods-img {
-		width: 335rpx;
-		height: 335rpx;
-		display: block;
-	}
-
-	.goods-name {
-		display: block;
-		height: 68rpx;
-		line-height: 68rpx;
-		font-size: 26rpx;
-		color: #333;
-		padding: 0 16rpx;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	/* ========== 价格行 ========== */
-	.goods-price-row {
-		height: 84rpx;
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0 16rpx;
-	}
-
-	.price-left {
-		display: flex;
-		align-items: baseline;
-		gap: 10rpx;
-	}
-
-	.price-current {
-		font-size: 28rpx;
-		font-weight: bold;
-		color: #e74c3c;
-	}
-
-	.price-original {
-		font-size: 22rpx;
-		color: #999;
-		text-decoration: line-through;
-	}
-
-	.cart-btn {
-		width: 56rpx;
-		height: 56rpx;
-		border-radius: 50%;
-		background-color: #09bb07;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex-shrink: 0;
-	}
-
-	.cart-icon {
-		width: 39rpx;
-		height: 39rpx;
-	}
-
-	/* ========== 占位 ========== */
-	.placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 100rpx 0;
-	}
-
-	.placeholder-text {
-		font-size: 26rpx;
-		color: #ccc;
-	}
+.placeholder { display: flex; align-items: center; justify-content: center; padding: 100rpx 0; }
+.placeholder-text { font-size: 26rpx; color: #ccc; }
 </style>
