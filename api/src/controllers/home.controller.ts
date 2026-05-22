@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { goodsService } from '../service/goods.service'
 import { bannerService } from '../service/banner.service'
+import prisma from '../lib/prisma'
 
 // 获取商品列表（C 端：仅上架 + 未删除）
 export const getGoodsList = async (req: Request, res: Response) => {
@@ -17,10 +18,44 @@ export const getGoodsList = async (req: Request, res: Response) => {
       pageSize,
       name,
       categoryId,
-      status: 1, // 仅上架
+      status: 1,
     })
 
     res.status(200).json({ code: 200, msg: '获取商品列表成功', data })
+  } catch (err: any) {
+    res.status(500).json({ code: 500, msg: err.message })
+  }
+}
+
+// 获取商品详情（C 端：含 SKU 列表）
+export const getGoodsDetail = async (req: Request, res: Response) => {
+  try {
+    const goodsId = parseInt(req.params.id as string)
+    const goods = await prisma.fruits.findFirst({
+      where: { id: goodsId, status: 1, deleted_at: null },
+      select: {
+        id: true,
+        name: true,
+        main_image: true,
+        images: true,
+        description: true,
+        category_id: true,
+      },
+    })
+    if (!goods) {
+      return res.status(404).json({ code: 404, msg: '商品不存在' })
+    }
+
+    const skus = await prisma.fruit_skus.findMany({
+      where: { fruit_id: goodsId },
+      orderBy: { id: 'asc' },
+    })
+
+    res.status(200).json({
+      code: 200,
+      msg: '获取商品详情成功',
+      data: { ...goods, skus },
+    })
   } catch (err: any) {
     res.status(500).json({ code: 500, msg: err.message })
   }
