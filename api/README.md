@@ -183,9 +183,9 @@ POST /api/user/addresses
 | city | string | 是 | 市 |
 | district | string | 是 | 区 |
 | detail_address | string | 是 | 详细地址 |
-| is_default | number | 否 | 是否默认：0-否 1-是，默认 0 |
+| is_default | number | 否 | 是否默认：0-否 1-是。首个地址自动为 1，其余为 0 |
 
-设为默认时自动取消其他默认地址。
+设为默认时自动取消其他默认地址。若为用户的第一个地址，自动设为默认。
 
 ##### 获取收货地址列表
 
