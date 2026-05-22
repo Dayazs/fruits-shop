@@ -254,9 +254,10 @@ export const goodsService = {
       }),
     ])
 
-    // 转换数据结构：first_sku_price + total_stock，移除完整 SKU 数组
+    // 转换数据结构：first_sku_* + total_stock，移除完整 SKU 数组
     const transformedList = list.map((fruit) => {
       const skus = fruit.fruit_skus
+      const first_sku_id = skus.length > 0 ? skus[0].id : null
       const first_sku_price = skus.length > 0 ? skus[0].price : null
       const first_sku_original_price = skus.length > 0 ? skus[0].original_price : null
       const total_stock = skus.reduce((sum, s) => sum + s.stock, 0)
@@ -273,6 +274,7 @@ export const goodsService = {
         deleted_at: fruit.deleted_at,
         created_at: fruit.created_at,
         updated_at: fruit.updated_at,
+        first_sku_id,
         first_sku_price,
         first_sku_original_price,
         total_stock,
@@ -560,6 +562,7 @@ export const goodsService = {
     // 转换数据结构
     const transformedList = list.map((fruit) => {
       const skus = fruit.fruit_skus
+      const first_sku_id = skus.length > 0 ? skus[0].id : null
       const first_sku_price = skus.length > 0 ? skus[0].price : null
       const first_sku_original_price = skus.length > 0 ? skus[0].original_price : null
       const total_stock = skus.reduce((sum, s) => sum + s.stock, 0)
@@ -576,6 +579,7 @@ export const goodsService = {
         deleted_at: fruit.deleted_at,
         created_at: fruit.created_at,
         updated_at: fruit.updated_at,
+        first_sku_id,
         first_sku_price,
         first_sku_original_price,
         total_stock,
