@@ -235,11 +235,7 @@ const handleLogout = () => {
 
 /* ========== 退出登录 ========== */
 .logout-section {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom));
+  padding: 40rpx 30rpx calc(40rpx + env(safe-area-inset-bottom));
   background-color: #f5f5f5;
 }
 .logout-btn {
