@@ -37,15 +37,18 @@ const uploadFile = (url, filePath, name = 'avatar') => {
         Authorization: `Bearer ${token}`
       },
       success: (res) => {
-        try {
-          const data = JSON.parse(res.data)
-          if (data.code === 200) {
-            resolve(data)
-          } else {
-            reject(data)
+        // res.data 可能已经是对象（部分 uni-app 版本），也可能是 JSON 字符串
+        let data = res.data
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (_) {
+            reject({ code: 500, msg: data || '服务器响应异常' })
+            return
           }
-        } catch (_) {
-          reject({ code: 500, msg: '解析响应失败' })
+        }
+        if (data && data.code === 200) {
+          resolve(data)
+        } else {
+          reject(data || { code: res.statusCode, msg: '上传失败' })
         }
       },
       fail: (err) => {
@@ -59,7 +62,13 @@ export const userApi = {
   wxLogin: (data) => request('/user/wx-login', { method: 'POST', data }),
   getProfile: () => request('/user/profile'),
   updateProfile: (data) => request('/user/profile', { method: 'PATCH', data }),
-  uploadAvatar: (filePath) => uploadFile('/user/profile/avatar', filePath, 'avatar')
+  uploadAvatar: (filePath) => uploadFile('/user/profile/avatar', filePath, 'avatar'),
+
+  // 收货地址
+  getAddresses: () => request('/user/addresses'),
+  createAddress: (data) => request('/user/addresses', { method: 'POST', data }),
+  updateAddress: (id, data) => request(`/user/addresses/${id}`, { method: 'PATCH', data }),
+  deleteAddress: (id) => request(`/user/addresses/${id}`, { method: 'DELETE' })
 }
 
 export const homeApi = {
