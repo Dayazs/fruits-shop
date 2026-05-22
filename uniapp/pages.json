@@ -41,6 +41,12 @@
       "style": {
         "navigationBarTitleText": "地址编辑"
       }
+    },
+    {
+      "path": "pages/goods-detail/goods-detail",
+      "style": {
+        "navigationBarTitleText": "商品详情"
+      }
     }
   ],
   "globalStyle": {
