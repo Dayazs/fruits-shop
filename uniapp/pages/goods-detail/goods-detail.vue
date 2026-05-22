@@ -47,8 +47,20 @@
 
 		<!-- ========== 底部操作栏 ========== -->
 		<view class="bottom-bar">
-			<button class="btn-cart" @tap="handleAddToCart">加入购物车</button>
-			<button class="btn-buy" @tap="handleBuyNow">立刻购买</button>
+			<!-- 左侧：购物车图标 + 角标 -->
+			<view class="bar-left" @tap="handleGoCart">
+				<view class="cart-icon-wrap">
+					<image src="/static/icons/shopping_trolley_item.svg" class="bar-cart-icon" mode="aspectFit"></image>
+					<view v-if="cartCount > 0" class="bar-badge">
+						<text class="bar-badge-text">{{ cartCount > 99 ? '99+' : cartCount }}</text>
+					</view>
+				</view>
+			</view>
+			<!-- 右侧：操作按钮 -->
+			<view class="bar-right">
+				<button class="btn-cart" @tap="handleAddToCart">加入购物车</button>
+				<button class="btn-buy" @tap="handleBuyNow">立刻购买</button>
+			</view>
 		</view>
 	</view>
 </template>
@@ -66,6 +78,10 @@
 		userApi,
 		IMG_BASE
 	} from '@/utils/api.js'
+	import {
+		cartCount,
+		refreshCartCount
+	} from '@/stores/cart.js'
 
 	const goods = ref(null)
 	const selectedSku = ref({})
@@ -94,6 +110,7 @@
 	})
 
 	onLoad((options) => {
+		refreshCartCount()
 		if (options && options.id) {
 			loadDetail(parseInt(options.id))
 		}
@@ -104,7 +121,6 @@
 			const res = await homeApi.getGoodsDetail(id)
 			goods.value = res.data
 			if (res.data.skus && res.data.skus.length > 0) {
-				// 默认选中第一个有库存的 SKU
 				const firstInStock = res.data.skus.find(s => s.stock > 0)
 				selectedSku.value = firstInStock || res.data.skus[0]
 			}
@@ -140,6 +156,7 @@
 				fruit_id: goods.value.id,
 				sku_id: selectedSku.value.id
 			})
+			await refreshCartCount()
 			uni.showToast({
 				title: '已加入购物车',
 				icon: 'success'
@@ -158,13 +175,19 @@
 			icon: 'none'
 		})
 	}
+
+	const handleGoCart = () => {
+		uni.switchTab({
+			url: '/pages/cart/cart'
+		})
+	}
 </script>
 
 <style>
 	.page {
 		min-height: 100vh;
 		background-color: #f5f5f5;
-		padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+		padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 	}
 
 	/* ========== 轮播图 ========== */
@@ -330,34 +353,78 @@
 		background-color: #fff;
 		display: flex;
 		align-items: center;
-		justify-content: flex-end;
+		justify-content: space-between;
 		padding: 0 30rpx;
-		gap: 20rpx;
 		box-sizing: border-box;
 		border-top: 1rpx solid #eee;
 		z-index: 100;
 		padding-bottom: env(safe-area-inset-bottom);
 	}
 
-	.btn-cart {
-		width: 200rpx;
+	.bar-left {
+		display: flex;
+		align-items: center;
+	}
+
+	.cart-icon-wrap {
+		position: relative;
+		background-color: #09bb07;
 		height: 70rpx;
-		line-height: 70rpx;
+		width: 70rpx;
+		border-radius: 50%;
+	}
+
+	.bar-cart-icon {
+		width: 48rpx;
+		height: 48rpx;
+		margin-top: 12rpx;
+		margin-left: 10rpx;
+	}
+
+	.bar-badge {
+		position: absolute;
+		top: -8rpx;
+		right: -12rpx;
+		min-width: 30rpx;
+		height: 30rpx;
+		background-color: #e74c3c;
+		border-radius: 14rpx;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 4rpx;
+	}
+
+	.bar-badge-text {
+		font-size: 16rpx;
+		color: #fff;
+		line-height: 1;
+	}
+
+	.bar-right {
+		display: flex;
+		gap: 20rpx;
+	}
+
+	.btn-cart {
+		width: 180rpx;
+		height: 64rpx;
+		line-height: 64rpx;
 		background-color: #fff;
 		color: #09bb07;
-		font-size: 28rpx;
-		border-radius: 12rpx;
+		font-size: 26rpx;
+		border-radius: 10rpx;
 		border: 2rpx solid #09bb07;
 	}
 
 	.btn-buy {
-		width: 200rpx;
-		height: 70rpx;
-		line-height: 70rpx;
+		width: 180rpx;
+		height: 64rpx;
+		line-height: 64rpx;
 		background-color: #09bb07;
 		color: #fff;
-		font-size: 28rpx;
-		border-radius: 12rpx;
+		font-size: 26rpx;
+		border-radius: 10rpx;
 		border: none;
 	}
 </style>
