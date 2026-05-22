@@ -1,9 +1,22 @@
 import prisma from '../lib/prisma'
 
 export const bannerService = {
-  // 轮播图列表
+  // 轮播图列表（管理端，全部）
   async getBanners() {
     return prisma.banners.findMany({
+      orderBy: { sort_order: 'asc' },
+      include: {
+        fruits: {
+          select: { id: true, name: true },
+        },
+      },
+    })
+  },
+
+  // 轮播图列表（C 端，仅返回启用的）
+  async getPublicBanners() {
+    return prisma.banners.findMany({
+      where: { status: 1 },
       orderBy: { sort_order: 'asc' },
       include: {
         fruits: {
