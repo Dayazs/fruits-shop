@@ -472,7 +472,7 @@
 		font-size: 30rpx;
 		border-radius: 12rpx;
 		border: none;
-		margin-left: auto;
+		margin-right: 20rpx;
 	}
 
 	.settle-btn.disabled {
