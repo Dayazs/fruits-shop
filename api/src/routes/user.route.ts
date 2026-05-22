@@ -11,6 +11,12 @@ import {
   updateAddress,
   deleteAddress,
 } from '../controllers/user.controller'
+import {
+  getCartList,
+  addToCart,
+  updateCartQuantity,
+  removeFromCart,
+} from '../controllers/cart.controller'
 import { authenticate } from '../middleware/auth'
 import { upload } from '../middleware/upload'
 import { removeDir } from '../utils/file'
@@ -48,5 +54,11 @@ router.post('/addresses', authenticate, createAddress)
 router.get('/addresses', authenticate, getAddresses)
 router.patch('/addresses/:addressId', authenticate, updateAddress)
 router.delete('/addresses/:addressId', authenticate, deleteAddress)
+
+// 购物车（需要认证）
+router.get('/cart', authenticate, getCartList)
+router.post('/cart', authenticate, addToCart)
+router.patch('/cart/:cartId', authenticate, updateCartQuantity)
+router.delete('/cart/:cartId', authenticate, removeFromCart)
 
 export default router
