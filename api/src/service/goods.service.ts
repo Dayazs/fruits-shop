@@ -75,10 +75,18 @@ export const goodsService = {
     return result
   },
 
-  // 获取商品分类
+  // 获取商品分类（管理端，全部）
   async getCategories() {
     const categories = await prisma.categories.findMany()
     return categories
+  },
+
+  // 获取商品分类（C 端，仅返回 is_show=1）
+  async getPublicCategories() {
+    return prisma.categories.findMany({
+      where: { is_show: 1 },
+      orderBy: { sort_order: 'asc' },
+    })
   },
 
   // 添加商品分类
