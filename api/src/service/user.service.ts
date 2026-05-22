@@ -229,8 +229,14 @@ export const userService = {
   ) {
     const now = new Date()
 
+    // 首个地址自动设为默认
+    const addressCount = await prisma.addresses.count({
+      where: { user_id: userId },
+    })
+    const isDefault = addressCount === 0 ? 1 : (params.is_default ?? 0)
+
     // 若设置为默认，先取消其他默认地址
-    if (params.is_default === 1) {
+    if (isDefault === 1) {
       await prisma.addresses.updateMany({
         where: { user_id: userId, is_default: 1 },
         data: { is_default: 0 },
@@ -246,7 +252,7 @@ export const userService = {
         city: params.city,
         district: params.district,
         detail_address: params.detail_address,
-        is_default: params.is_default ?? 0,
+        is_default: isDefault,
         created_at: now,
         updated_at: now,
       },
@@ -300,10 +306,26 @@ export const userService = {
     if (updates.detail_address !== undefined) data.detail_address = updates.detail_address
     if (updates.is_default !== undefined) data.is_default = updates.is_default
 
-    return prisma.addresses.update({
+    const updated = await prisma.addresses.update({
       where: { id: addressId },
       data,
     })
+
+    // 如果取消了默认且该地址原为默认，自动将另一个地址设为默认
+    if (updates.is_default === 0 && addr.is_default === 1) {
+      const nextDefault = await prisma.addresses.findFirst({
+        where: { user_id: userId, id: { not: addressId } },
+        orderBy: { id: 'desc' },
+      })
+      if (nextDefault) {
+        await prisma.addresses.update({
+          where: { id: nextDefault.id },
+          data: { is_default: 1 },
+        })
+      }
+    }
+
+    return updated
   },
 
   // 删除收货地址（物理删除）
@@ -316,9 +338,25 @@ export const userService = {
       throw new Error('地址不存在')
     }
 
-    return prisma.addresses.delete({
+    const deleted = await prisma.addresses.delete({
       where: { id: addressId },
     })
+
+    // 如果删除的是默认地址，将另一个地址设为默认
+    if (addr.is_default === 1) {
+      const nextDefault = await prisma.addresses.findFirst({
+        where: { user_id: userId },
+        orderBy: { id: 'desc' },
+      })
+      if (nextDefault) {
+        await prisma.addresses.update({
+          where: { id: nextDefault.id },
+          data: { is_default: 1 },
+        })
+      }
+    }
+
+    return deleted
   },
 
   async logout(userId: number) {
