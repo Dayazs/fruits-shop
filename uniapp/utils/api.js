@@ -86,5 +86,6 @@ export const homeApi = {
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join('&')
     return request(`/home/goods${query ? '?' + query : ''}`)
-  }
+  },
+  getGoodsDetail: (id) => request(`/home/goods/${id}`)
 }
