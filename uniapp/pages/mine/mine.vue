@@ -2,14 +2,8 @@
   <view class="mine-page">
     <!-- ========== 用户卡片 ========== -->
     <view class="user-card" @tap="handleUserCardTap">
-      <!-- 背景层 -->
       <view class="card-bg"></view>
-      <image
-        class="card-bg-img"
-        src="/static/icons/user_background.png"
-        mode="aspectFill"
-      ></image>
-      <!-- 内容层 -->
+      <image class="card-bg-img" src="/static/icons/user_background.png" mode="aspectFill"></image>
       <view class="card-content">
         <image
           class="user-avatar"
@@ -25,23 +19,22 @@
       </view>
     </view>
 
-    <!-- ========== 功能菜单 ========== -->
-    <view class="menu-section">
-      <view class="menu-item" @tap="handleNavTo('address')">
-        <text class="menu-text">我的地址</text>
-        <text class="menu-arrow">&#8250;</text>
+    <!-- ========== 我的订单 ========== -->
+    <view class="order-card">
+      <view class="order-header">
+        <text class="order-title">我的订单</text>
+        <text class="order-all" @tap.stop="handleNavTo('allOrders')">全部</text>
       </view>
-      <view class="menu-item" @tap="handleNavTo('pendingPayment')">
-        <text class="menu-text">待付款</text>
-        <text class="menu-arrow">&#8250;</text>
-      </view>
-      <view class="menu-item" @tap="handleNavTo('pendingShip')">
-        <text class="menu-text">待发货</text>
-        <text class="menu-arrow">&#8250;</text>
-      </view>
-      <view class="menu-item" @tap="handleNavTo('pendingReceive')">
-        <text class="menu-text">待收货</text>
-        <text class="menu-arrow">&#8250;</text>
+      <view class="order-status-row">
+        <view
+          class="status-item"
+          v-for="item in orderStatuses"
+          :key="item.label"
+          @tap="handleNavTo(item.label)"
+        >
+          <image :src="item.icon" class="status-icon" mode="aspectFit"></image>
+          <text class="status-text">{{ item.label }}</text>
+        </view>
       </view>
     </view>
   </view>
@@ -63,6 +56,14 @@ const userInfo = reactive({
   avatar: '',
   mobile: ''
 })
+
+const orderStatuses = [
+  { label: '待付款', icon: '/static/icons/non-payment.svg' },
+  { label: '待发货', icon: '/static/icons/not_yet_shipped.svg' },
+  { label: '已发货', icon: '/static/icons/shipped.svg' },
+  { label: '交易完成', icon: '/static/icons/complete_transaction.svg' },
+  { label: '交易关闭', icon: '/static/icons/transaction_closed.svg' }
+]
 
 onLoad(() => {
   checkLoginStatus()
@@ -130,14 +131,12 @@ const handleUserCardTap = () => {
   if (isLoggedIn.value) {
     uni.navigateTo({ url: '/pages/personal/personal' })
   } else {
-    // 未登录：弹出登录弹窗
     uni.showModal({
       title: '登录',
       content: '请先登录',
       confirmText: '微信登录',
       success: (res) => {
         if (res.confirm) {
-          // 模拟勾选协议后触发登录
           agreed.value = true
           handleWechatLogin()
         }
@@ -155,6 +154,7 @@ const handleNavTo = (type) => {
 .mine-page {
   min-height: 100vh;
   background-color: #f5f5f5;
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
 /* ========== 用户卡片 ========== */
@@ -171,7 +171,7 @@ const handleNavTo = (type) => {
   left: 0;
   width: 750rpx;
   height: 294rpx;
-  background-color: #09bb07;
+  background-color: rgba(14, 204, 80, 1);
 }
 .card-bg-img {
   position: absolute;
@@ -188,20 +188,20 @@ const handleNavTo = (type) => {
   align-items: center;
   height: 294rpx;
   padding-left: 40rpx;
-  padding-top: 54rpx;
+  padding-top: 10rpx;
   box-sizing: border-box;
 }
 .user-avatar {
-  width: 112rpx;
-  height: 112rpx;
+  width: 120rpx;
+  height: 120rpx;
   border-radius: 50%;
-  border: 4rpx solid rgba(255,255,255,0.6);
+  border: 4rpx solid rgba(255, 255, 255, 0.6);
   background-color: #eee;
   flex-shrink: 0;
 }
 .user-info {
   display: flex;
-  align-items: center;
+  margin-top: -60rpx;
   flex: 1;
   margin-left: 24rpx;
 }
@@ -212,32 +212,56 @@ const handleNavTo = (type) => {
 }
 .user-arrow {
   font-size: 36rpx;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: -5rpx;
   margin-left: 12rpx;
 }
 
-/* ========== 功能菜单 ========== */
-.menu-section {
+/* ========== 我的订单卡片 ========== */
+.order-card {
+  width: 710rpx;
+  height: 256rpx;
+  margin: 0 auto;
   background-color: #fff;
-  margin: 0 20rpx 20rpx;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+  padding: 24rpx 20rpx 0;
 }
-.menu-item {
+.order-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 28rpx 30rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 24rpx;
 }
-.menu-item:last-child {
-  border-bottom: none;
-}
-.menu-text {
+.order-title {
   font-size: 30rpx;
+  font-weight: bold;
   color: #333;
 }
-.menu-arrow {
-  font-size: 32rpx;
-  color: #ccc;
+.order-all {
+  font-size: 26rpx;
+  color: #999;
+}
+.order-status-row {
+  display: flex;
+  justify-content: space-around;
+}
+.status-item {
+  width: 142rpx;
+  height: 152rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.status-icon {
+  width: 60rpx;
+  height: 60rpx;
+  margin-bottom: 12rpx;
+}
+.status-text {
+  font-size: 22rpx;
+  color: #666;
 }
 </style>
