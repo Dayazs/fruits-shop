@@ -39,7 +39,8 @@ router.post('/register', register)
 
 // 需要认证
 router.get('/profile', authenticate, getProfile)
-router.patch('/profile', handleUpload, autoCleanupTemp, authenticate, updateProfile)
+router.patch('/profile', authenticate, updateProfile)
+router.post('/profile/avatar', handleUpload, autoCleanupTemp, authenticate, updateProfile)
 router.post('/logout', authenticate, logout)
 
 // 收货地址（需要认证）
