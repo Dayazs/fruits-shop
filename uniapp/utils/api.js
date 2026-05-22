@@ -1,4 +1,5 @@
 const BASE_URL = 'http://localhost:10040/api'
+export const IMG_BASE = 'http://localhost:10040'
 
 const request = (url, options = {}) => {
   return new Promise((resolve, reject) => {
@@ -59,4 +60,9 @@ export const userApi = {
   getProfile: () => request('/user/profile'),
   updateProfile: (data) => request('/user/profile', { method: 'PATCH', data }),
   uploadAvatar: (filePath) => uploadFile('/user/profile/avatar', filePath, 'avatar')
+}
+
+export const homeApi = {
+  getBanners: () => request('/home/banners'),
+  getCategories: () => request('/home/categories')
 }
