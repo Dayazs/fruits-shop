@@ -68,7 +68,13 @@ export const userApi = {
   getAddresses: () => request('/user/addresses'),
   createAddress: (data) => request('/user/addresses', { method: 'POST', data }),
   updateAddress: (id, data) => request(`/user/addresses/${id}`, { method: 'PATCH', data }),
-  deleteAddress: (id) => request(`/user/addresses/${id}`, { method: 'DELETE' })
+  deleteAddress: (id) => request(`/user/addresses/${id}`, { method: 'DELETE' }),
+
+  // 购物车
+  getCartList: () => request('/user/cart'),
+  addToCart: (data) => request('/user/cart', { method: 'POST', data }),
+  updateCartQuantity: (id, data) => request(`/user/cart/${id}`, { method: 'PATCH', data }),
+  removeFromCart: (id) => request(`/user/cart/${id}`, { method: 'DELETE' })
 }
 
 export const homeApi = {
