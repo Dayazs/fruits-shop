@@ -23,6 +23,12 @@
       "style": {
         "navigationBarTitleText": "我的"
       }
+    },
+    {
+      "path": "pages/personal/personal",
+      "style": {
+        "navigationBarTitleText": "个人信息"
+      }
     }
   ],
   "globalStyle": {
