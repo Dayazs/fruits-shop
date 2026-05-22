@@ -258,6 +258,7 @@ export const goodsService = {
     const transformedList = list.map((fruit) => {
       const skus = fruit.fruit_skus
       const first_sku_price = skus.length > 0 ? skus[0].price : null
+      const first_sku_original_price = skus.length > 0 ? skus[0].original_price : null
       const total_stock = skus.reduce((sum, s) => sum + s.stock, 0)
 
       return {
@@ -273,6 +274,7 @@ export const goodsService = {
         created_at: fruit.created_at,
         updated_at: fruit.updated_at,
         first_sku_price,
+        first_sku_original_price,
         total_stock,
         categories: fruit.categories,
       }
@@ -559,6 +561,7 @@ export const goodsService = {
     const transformedList = list.map((fruit) => {
       const skus = fruit.fruit_skus
       const first_sku_price = skus.length > 0 ? skus[0].price : null
+      const first_sku_original_price = skus.length > 0 ? skus[0].original_price : null
       const total_stock = skus.reduce((sum, s) => sum + s.stock, 0)
 
       return {
@@ -574,6 +577,7 @@ export const goodsService = {
         created_at: fruit.created_at,
         updated_at: fruit.updated_at,
         first_sku_price,
+        first_sku_original_price,
         total_stock,
         categories: fruit.categories,
       }
