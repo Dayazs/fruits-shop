@@ -75,6 +75,10 @@ pnpm start
 | GET | `/addresses` | 获取收货地址列表 | 是 |
 | PATCH | `/addresses/:addressId` | 编辑收货地址 | 是 |
 | DELETE | `/addresses/:addressId` | 删除收货地址 | 是 |
+| GET | `/cart` | 获取购物车列表 | 是 |
+| POST | `/cart` | 加入购物车 | 是 |
+| PATCH | `/cart/:cartId` | 更新购物车数量 | 是 |
+| DELETE | `/cart/:cartId` | 移出购物车 | 是 |
 
 #### 微信一键登录
 
@@ -235,7 +239,34 @@ DELETE /api/user/addresses/{addressId}
 
 物理删除，直接从数据库移除。
 
-地址响应示例：
+---
+
+#### 购物车
+
+##### 获取购物车列表
+
+```
+GET /api/user/cart
+```
+
+认证：是（Bearer Token）
+
+返回当前用户所有购物车记录，含商品信息和 SKU 详情。
+
+##### 加入购物车
+
+```
+POST /api/user/cart
+Content-Type: application/json
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| fruit_id | number | 是 | 商品 ID |
+| sku_id | number | 否 | SKU ID（不传则自动选第一个 SKU） |
+| quantity | number | 否 | 数量，默认 1 |
+
+##### 地址响应示例：
 
 ```json
 {
@@ -254,6 +285,76 @@ DELETE /api/user/addresses/{addressId}
       "is_default": 1,
       "created_at": "2026-05-20T10:00:00.000Z",
       "updated_at": "2026-05-20T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+---
+
+#### 购物车
+
+##### 获取购物车列表
+
+```
+GET /api/user/cart
+```
+
+认证：是（Bearer Token）
+
+##### 加入购物车
+
+```
+POST /api/user/cart
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| fruit_id | number | 是 | 商品 ID |
+| sku_id | number | 否 | SKU ID（不传自动选第一个 SKU） |
+| quantity | number | 否 | 数量，默认 1 |
+
+同 fruit_id + sku_id 重复加入时 quantity 累加，自动扣减库存（事务保证）。
+
+##### 更新购物车数量
+
+```
+PATCH /api/user/cart/{cartId}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| quantity | number | 是 | 新数量（最小 1） |
+
+增加检查库存，减少恢复库存，事务保证。
+
+##### 移出购物车
+
+```
+DELETE /api/user/cart/{cartId}
+```
+
+认证：是（Bearer Token）
+
+删除记录并恢复 SKU 库存。
+
+响应示例：
+
+```json
+{
+  "code": 200,
+  "msg": "获取购物车成功",
+  "data": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "fruit_id": 1,
+      "sku_id": 1,
+      "quantity": 2,
+      "fruits": { "id": 1, "name": "山东红富士苹果", "main_image": "/uploads/goods/xxx/main.jpg" },
+      "fruit_skus": { "id": 1, "spec_name": "5斤装", "price": "29.90", "stock": 98 }
     }
   ]
 }
