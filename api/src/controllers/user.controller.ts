@@ -1,6 +1,8 @@
 import { Request, Response } from 'express'
 import { userService } from '../service/user.service'
 import { codeToOpenId } from '../config/wxpay'
+import { moveToGoodsDir, deleteFileByUrl } from '../utils/file'
+import prisma from '../lib/prisma'
 
 // 注册
 export const register = async (req: Request, res: Response) => {
@@ -68,16 +70,39 @@ export const getProfile = async (req: Request, res: Response) => {
 
 // 更新用户信息
 export const updateProfile = async (req: Request, res: Response) => {
+  let newAvatarPath = ''
+  let oldAvatarUrl: string | undefined
+
   try {
     const userId = req.user.id
-    const { avatar, username, mobile } = req.body
-    const data = await userService.updateProfile(userId, {
-      avatar,
-      username,
-      mobile,
-    })
+    const files = req.files as Express.Multer.File[] | undefined
+    const avatarFile = files?.find((f) => f.fieldname === 'avatar')
+
+    const updates: any = {}
+
+    if (req.body.username !== undefined) updates.username = req.body.username
+    if (req.body.mobile !== undefined) updates.mobile = req.body.mobile
+
+    if (avatarFile) {
+      newAvatarPath = moveToGoodsDir(req.tempDir || '', 'user/avatar', avatarFile)
+      updates.avatar = newAvatarPath
+
+      const oldUser = await prisma.users.findUnique({
+        where: { id: userId },
+        select: { avatar: true },
+      })
+      if (oldUser?.avatar) {
+        oldAvatarUrl = oldUser.avatar
+      }
+    }
+
+    const data = await userService.updateProfile(userId, updates)
+
+    if (oldAvatarUrl) deleteFileByUrl(oldAvatarUrl)
+
     res.status(200).json({ code: 200, msg: '更新用户信息成功', data })
   } catch (err: any) {
+    if (newAvatarPath) deleteFileByUrl(newAvatarPath)
     res.status(400).json({ code: 400, msg: err.message })
   }
 }
