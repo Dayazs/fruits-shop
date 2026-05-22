@@ -143,3 +143,13 @@ blog-backend/uploads/
 # Temporary files
 tmp/
 temp/
+
+# 图片资源
+*.jpg
+*.jpeg
+*.png
+*.svg
+*.gif
+*.ico
+*.webp
+*.bmp
