@@ -64,5 +64,12 @@ export const userApi = {
 
 export const homeApi = {
   getBanners: () => request('/home/banners'),
-  getCategories: () => request('/home/categories')
+  getCategories: () => request('/home/categories'),
+  getGoods: (params = {}) => {
+    const query = Object.entries(params)
+      .filter(([_, v]) => v !== undefined && v !== null)
+      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+      .join('&')
+    return request(`/home/goods${query ? '?' + query : ''}`)
+  }
 }
