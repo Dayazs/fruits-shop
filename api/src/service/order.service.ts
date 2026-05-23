@@ -306,6 +306,91 @@ export const orderService = {
     return { total, page, pageSize, list: transformedList }
   },
 
+  // 管理端：订单详情
+  async getAdminOrderDetail(orderId: number) {
+    const order = await prisma.orders.findUnique({
+      where: { id: orderId },
+      include: {
+        order_items: {
+          include: { fruits: { select: { main_image: true } } },
+        },
+        addresses: true,
+        users: { select: { id: true, username: true, mobile: true } },
+      },
+    })
+    if (!order) throw new Error('订单不存在')
+
+    return {
+      ...order,
+      order_items: order.order_items.map((item) => ({
+        ...item,
+        main_image: item.fruits.main_image,
+        fruits: undefined,
+      })),
+    }
+  },
+
+  // 管理端：编辑订单
+  async adminUpdateOrder(
+    orderId: number,
+    updates: {
+      address_id?: number
+      remark?: string
+      status?: number
+    },
+  ) {
+    const order = await prisma.orders.findUnique({ where: { id: orderId } })
+    if (!order) throw new Error('订单不存在')
+
+    const data: any = { updated_at: new Date() }
+
+    if (updates.address_id !== undefined) {
+      const addr = await prisma.addresses.findUnique({
+        where: { id: updates.address_id },
+      })
+      if (!addr) throw new Error('收货地址不存在')
+      data.address_id = updates.address_id
+    }
+
+    if (updates.remark !== undefined) data.remark = updates.remark
+
+    if (updates.status !== undefined) {
+      const now = new Date()
+      data.status = updates.status
+      if (updates.status === ORDER_STATUS.PENDING_SHIP) {
+        data.pay_time = now
+      } else if (updates.status === ORDER_STATUS.PENDING_RECEIVE) {
+        data.ship_time = now
+      } else if (updates.status === ORDER_STATUS.COMPLETED) {
+        data.finish_time = now
+      }
+      // 取消时恢复库存
+      if (updates.status === ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.CANCELLED) {
+        const items = await prisma.order_items.findMany({
+          where: { order_id: orderId },
+        })
+        for (const item of items) {
+          await prisma.fruit_skus.update({
+            where: { id: item.sku_id },
+            data: { stock: { increment: item.quantity } },
+          })
+        }
+      }
+    }
+
+    return prisma.orders.update({
+      where: { id: orderId },
+      data,
+      include: {
+        order_items: {
+          include: { fruits: { select: { main_image: true } } },
+        },
+        addresses: true,
+        users: { select: { id: true, username: true, mobile: true } },
+      },
+    })
+  },
+
   // 管理端：发货
   async shipOrder(orderId: number) {
     const order = await prisma.orders.findUnique({ where: { id: orderId } })

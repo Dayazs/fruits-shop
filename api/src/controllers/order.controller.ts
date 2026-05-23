@@ -132,6 +132,36 @@ export const getAdminOrderList = async (req: Request, res: Response) => {
   }
 }
 
+// 管理端订单详情
+export const getAdminOrderDetail = async (req: Request, res: Response) => {
+  try {
+    const orderId = parseInt(req.params.orderId as string)
+    const data = await orderService.getAdminOrderDetail(orderId)
+
+    res.status(200).json({ code: 200, msg: '获取订单详情成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 管理端编辑订单
+export const adminUpdateOrder = async (req: Request, res: Response) => {
+  try {
+    const orderId = parseInt(req.params.orderId as string)
+    const { address_id, remark, status } = req.body
+
+    const data = await orderService.adminUpdateOrder(orderId, {
+      address_id,
+      remark,
+      status,
+    })
+
+    res.status(200).json({ code: 200, msg: '编辑订单成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
 // 管理端发货
 export const shipOrder = async (req: Request, res: Response) => {
   try {
