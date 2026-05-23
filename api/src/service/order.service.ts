@@ -163,13 +163,27 @@ export const orderService = {
         take: pageSize,
         orderBy: { id: 'desc' },
         include: {
-          order_items: true,
+          order_items: {
+            include: {
+              fruits: { select: { main_image: true } },
+            },
+          },
           addresses: true,
         },
       }),
     ])
 
-    return { total, page, pageSize, list }
+    // 将 main_image 提升到 order_item 顶层
+    const transformedList = list.map((order) => ({
+      ...order,
+      order_items: order.order_items.map((item) => ({
+        ...item,
+        main_image: item.fruits.main_image,
+        fruits: undefined,
+      })),
+    }))
+
+    return { total, page, pageSize, list: transformedList }
   },
 
   // 获取订单详情
@@ -177,14 +191,26 @@ export const orderService = {
     const order = await prisma.orders.findFirst({
       where: { id: orderId, user_id: userId },
       include: {
-        order_items: true,
+        order_items: {
+          include: {
+            fruits: { select: { main_image: true } },
+          },
+        },
         addresses: true,
       },
     })
     if (!order) {
       throw new Error('订单不存在')
     }
-    return order
+
+    return {
+      ...order,
+      order_items: order.order_items.map((item) => ({
+        ...item,
+        main_image: item.fruits.main_image,
+        fruits: undefined,
+      })),
+    }
   },
 
   // 取消订单（待付款 → 已取消，恢复库存）
@@ -257,14 +283,27 @@ export const orderService = {
         take: pageSize,
         orderBy: { id: 'desc' },
         include: {
-          order_items: true,
+          order_items: {
+            include: {
+              fruits: { select: { main_image: true } },
+            },
+          },
           addresses: true,
           users: { select: { id: true, username: true, mobile: true } },
         },
       }),
     ])
 
-    return { total, page, pageSize, list }
+    const transformedList = list.map((order) => ({
+      ...order,
+      order_items: order.order_items.map((item) => ({
+        ...item,
+        main_image: item.fruits.main_image,
+        fruits: undefined,
+      })),
+    }))
+
+    return { total, page, pageSize, list: transformedList }
   },
 
   // 管理端：发货
