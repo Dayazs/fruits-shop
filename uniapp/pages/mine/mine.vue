@@ -30,8 +30,8 @@
           @tap="handleOrderNav(item.status)">
           <view class="status-icon-wrap">
             <image :src="item.icon" class="status-icon" mode="aspectFit"></image>
-            <view v-if="item.status === 0 && pendingCount > 0" class="status-badge">
-              <text class="badge-num">{{ pendingCount > 99 ? '99+' : pendingCount }}</text>
+            <view v-if="item.status <= 2 && orderCounts[item.status] > 0" class="status-badge">
+              <text class="badge-num">{{ orderCounts[item.status] > 99 ? '99+' : orderCounts[item.status] }}</text>
             </view>
           </view>
           <text class="status-text">{{ item.label }}</text>
@@ -51,7 +51,7 @@ import { userApi, orderApi, IMG_BASE } from '@/utils/api.js'
 const isLoggedIn = ref(false)
 const agreed = ref(false)
 const loginLoading = ref(false)
-const pendingCount = ref(0)
+const orderCounts = ref({ 0: 0, 1: 0, 2: 0 })
 const userInfo = reactive({
   id: 0, username: '', avatar: '', mobile: ''
 })
@@ -72,7 +72,7 @@ const checkLoginStatus = () => {
   if (token) {
     isLoggedIn.value = true
     fetchProfile()
-    fetchPendingCount()
+    fetchOrderCounts()
   } else {
     isLoggedIn.value = false
   }
@@ -90,12 +90,19 @@ const fetchProfile = async () => {
   }
 }
 
-const fetchPendingCount = async () => {
+const fetchOrderCounts = async () => {
   try {
-    const res = await orderApi.getOrders({ status: 0 })
-    pendingCount.value = (res.data || []).length
+    const counts = { 0: 0, 1: 0, 2: 0 }
+    const res = await orderApi.getOrders()
+    const list = res.data?.list || []
+    for (const order of list) {
+      if (order.status <= 2 && counts[order.status] !== undefined) {
+        counts[order.status]++
+      }
+    }
+    orderCounts.value = counts
   } catch (_) {
-    pendingCount.value = 0
+    orderCounts.value = { 0: 0, 1: 0, 2: 0 }
   }
 }
 
@@ -115,7 +122,7 @@ const handleWechatLogin = () => {
         uni.setStorageSync('token', res.data.token)
         Object.assign(userInfo, res.data)
         isLoggedIn.value = true
-        fetchPendingCount()
+        fetchOrderCounts()
         uni.showToast({ title: '登录成功', icon: 'success' })
       } catch (err) {
         uni.showToast({ title: err.msg || '登录失败，请重试', icon: 'none' })
