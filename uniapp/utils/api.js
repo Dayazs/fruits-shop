@@ -77,15 +77,24 @@ export const userApi = {
   removeFromCart: (id) => request(`/user/cart/${id}`, { method: 'DELETE' })
 }
 
+const buildQuery = (params) => {
+  const parts = Object.entries(params)
+    .filter(([_, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join('&')
+  return parts ? '?' + parts : ''
+}
+
 export const homeApi = {
   getBanners: () => request('/home/banners'),
   getCategories: () => request('/home/categories'),
-  getGoods: (params = {}) => {
-    const query = Object.entries(params)
-      .filter(([_, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join('&')
-    return request(`/home/goods${query ? '?' + query : ''}`)
-  },
+  getGoods: (params = {}) => request(`/home/goods${buildQuery(params)}`),
   getGoodsDetail: (id) => request(`/home/goods/${id}`)
+}
+
+export const orderApi = {
+  createOrder: (data) => request('/order', { method: 'POST', data }),
+  getOrders: (params = {}) => request(`/order${buildQuery(params)}`),
+  cancelOrder: (id) => request(`/order/${id}/cancel`, { method: 'PATCH' }),
+  payOrder: (data) => request('/order/pay', { method: 'POST', data })
 }
