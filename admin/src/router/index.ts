@@ -43,6 +43,12 @@ const routes: Array<RouteRecordRaw> = [
         meta: { title: '回收站', requiresAuth: true, permission: 'goods' },
       },
       {
+        path: 'order',
+        name: 'Order',
+        component: () => import('@/views/order/index.vue'),
+        meta: { title: '订单列表', requiresAuth: true, permission: 'order' },
+      },
+      {
         path: 'admin',
         name: 'Admin',
         component: () => import('@/views/admin/index.vue'),
