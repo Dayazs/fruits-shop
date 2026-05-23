@@ -1,3 +1,5 @@
 node_modules
 # Keep environment variables out of version control
 .env
+# 微信支付证书（敏感文件）
+certs/*.pem
