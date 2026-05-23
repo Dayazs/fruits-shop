@@ -11,17 +11,24 @@ src
 │  ├─ user.route.ts            // 用户路由
 │  ├─ admin.route.ts           // 管理员路由
 │  ├─ goods.route.ts           // 商品路由
-│  └─ banner.route.ts          // 轮播图路由
+│  ├─ banner.route.ts          // 轮播图路由
+│  ├─ home.route.ts            // C 端首页路由
+│  └─ order.route.ts           // 订单路由
 ├─ controllers/                // 控制器层
 │  ├─ user.controller.ts       // 用户控制器
 │  ├─ admin.controller.ts      // 管理员控制器
 │  ├─ goods.controller.ts      // 商品控制器
-│  └─ banner.controller.ts     // 轮播图控制器
+│  ├─ banner.controller.ts     // 轮播图控制器
+│  ├─ home.controller.ts       // 首页控制器
+│  └─ order.controller.ts      // 订单控制器
 ├─ service/                    // 业务层
 │  ├─ user.service.ts          // 用户业务
 │  ├─ admin.service.ts         // 管理员业务
 │  ├─ goods.service.ts         // 商品业务
-│  └─ banner.service.ts        // 轮播图业务
+│  ├─ banner.service.ts        // 轮播图业务
+│  ├─ order.service.ts         // 订单业务
+│  ├─ pay.service.ts           // 支付业务
+│  └─ cart.service.ts          // 购物车业务
 ├─ middleware/                  // 中间件
 │  ├─ auth.ts                  // 认证 + 管理员权限
 │  └─ upload.ts                // 文件上传
@@ -42,6 +49,24 @@ src
 | `REFRESH_TOKEN_SECRET` | refresh_token 签名密钥 |
 | `APPID` | 微信小程序 AppID |
 | `APP_SECRET` | 微信小程序 AppSecret |
+| `MCH_ID` | 微信支付商户号 |
+| `PAY_API_V3_KEY` | 微信支付 V3 API 密钥（32 位） |
+| `PAY_SERIAL_NO` | 商户证书序列号 |
+| `PAY_KEY_PATH` | 商户私钥路径（如 `./certs/apiclient_key.pem`） |
+| `PAY_CERT_PATH` | 商户证书路径（如 `./certs/apiclient_cert.pem`） |
+| `PAY_NOTIFY_URL` | 微信支付回调地址（需外网可达） |
+
+### 微信支付证书
+
+使用微信支付 V3 需将商户证书放入 `certs/` 目录：
+
+```
+api/certs/
+├── apiclient_key.pem    # 商户私钥
+└── apiclient_cert.pem   # 商户证书
+```
+
+然后在 `.env` 中填入 `PAY_API_V3_KEY`（32 位密钥）和 `PAY_SERIAL_NO`（证书序列号）。
 
 ## 启动
 
@@ -358,6 +383,84 @@ DELETE /api/user/cart/{cartId}
     }
   ]
 }
+```
+
+---
+
+### 订单接口 `/api/order`
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/` | 创建订单（从购物车结算） | 是 |
+| GET | `/` | 订单列表（支持状态筛选） | 是 |
+| GET | `/{orderId}` | 订单详情 | 是 |
+| PATCH | `/{orderId}/cancel` | 取消订单 | 是 |
+| POST | `/pay` | 发起支付 | 是 |
+| POST | `/pay-callback` | 微信支付回调 | 否 |
+| GET | `/admin/list` | 管理端：订单列表 | 管理员 |
+| PATCH | `/admin/{orderId}/ship` | 管理端：发货 | 管理员 |
+
+#### 订单状态码
+
+| 值 | 状态 | 说明 |
+|----|------|------|
+| 0 | 待付款 | 刚下单 |
+| 1 | 待发货 | 已支付 |
+| 2 | 待收货 | 已发货 |
+| 3 | 已完成 | 交易完成 |
+| 4 | 已取消 | 用户取消 |
+
+#### 创建订单
+
+```
+POST /api/order
+Content-Type: application/json
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| cart_ids | number[] | 是 | 要结算的购物车记录 ID 数组 |
+| address_id | number | 是 | 收货地址 ID |
+| remark | string | 否 | 订单备注 |
+
+订单创建流程：
+1. 校验购物车记录归属和库存
+2. 一个订单包含多个 order_items（按 cart_ids）
+3. total_amount = 所有 order_item.total_price 之和
+4. 清空已结算的购物车记录
+5. 库存已在加入购物车时扣减，结算时做防御性二次校验
+
+#### 发起支付
+
+```
+POST /api/order/pay
+Content-Type: application/json
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| order_id | number | 是 | 订单 ID |
+| openid | string | 是 | 用户微信 openid |
+
+返回小程序 `wx.requestPayment` 所需的参数（appId/timeStamp/nonceStr/package/paySign），签名方式为 RSA（V3 二次签名）。
+
+#### 支付回调
+
+```
+POST /api/order/pay-callback
+Content-Type: application/json
+```
+
+微信支付 V3 回调。微信使用 JSON 格式推送支付结果，`resource` 字段需 AES-256-GCM 解密。验证签名和金额后自动将订单状态更新为「待发货」。
+
+#### 库存策略
+
+**下单时预占库存**：用户加入购物车即刻扣减库存，结算时做防御性二次校验，支付成功后不再扣减。取消订单时恢复库存。
+
+```
+加购 → 扣库存 → 结算 → 创建订单 → 支付 → 待发货
+                                │
+                          取消订单 → 恢复库存
 ```
 
 ---
