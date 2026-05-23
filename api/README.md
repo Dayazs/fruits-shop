@@ -397,7 +397,9 @@ DELETE /api/user/cart/{cartId}
 | PATCH | `/{orderId}/cancel` | 取消订单 | 是 |
 | POST | `/pay` | 发起支付 | 是 |
 | POST | `/pay-callback` | 微信支付回调 | 否 |
-| GET | `/admin/list` | 管理端：订单列表 | 管理员 |
+| GET | `/admin/list` | 管理端：订单列表（分页+筛选） | 管理员 |
+| GET | `/admin/{orderId}` | 管理端：订单详情 | 管理员 |
+| PATCH | `/admin/{orderId}` | 管理端：编辑订单 | 管理员 |
 | PATCH | `/admin/{orderId}/ship` | 管理端：发货 | 管理员 |
 
 #### 订单状态码
@@ -462,6 +464,41 @@ Content-Type: application/json
                                 │
                           取消订单 → 恢复库存
 ```
+
+#### 管理端接口
+
+##### 订单列表
+
+```
+GET /api/order/admin/list?page=1&pageSize=10&status=0&keyword=NO26
+```
+
+| 参数 | 说明 |
+|------|------|
+| page | 页码 |
+| pageSize | 每页数量 |
+| status | 订单状态筛选 |
+| keyword | 搜索订单号或用户名 |
+
+##### 编辑订单
+
+```
+PATCH /api/order/admin/{orderId}
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| address_id | number | 否 | 修改收货地址 |
+| remark | string | 否 | 修改备注 |
+| status | number | 否 | 手动变更状态（取消时自动恢复库存） |
+
+##### 发货
+
+```
+PATCH /api/order/admin/{orderId}/ship
+```
+
+仅「待发货」状态可发货，自动设定 ship_time。
 
 ---
 
