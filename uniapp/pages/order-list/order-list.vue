@@ -16,8 +16,8 @@
 					<view class="addr-info">
 						<text class="addr-contact">{{ order.addresses.receiver_name }}
 							{{ order.addresses.receiver_mobile }}</text>
-						<text
-							class="addr-full">{{ order.addresses.province }}{{ order.addresses.city }}{{ order.addresses.district }}{{ order.addresses.detail_address }}</text>
+						<text class="addr-full">{{ order.addresses.province }} {{ order.addresses.city }}
+							{{ order.addresses.district }} {{ order.addresses.detail_address }}</text>
 					</view>
 				</view>
 
