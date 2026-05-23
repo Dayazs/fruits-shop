@@ -43,6 +43,14 @@
       }
     },
     {
+      "path": "pages/order-confirm/order-confirm",
+      "style": { "navigationBarTitleText": "确认订单" }
+    },
+    {
+      "path": "pages/order-list/order-list",
+      "style": { "navigationBarTitleText": "订单列表" }
+    },
+    {
       "path": "pages/goods-detail/goods-detail",
       "style": {
         "navigationBarTitleText": "商品详情"
