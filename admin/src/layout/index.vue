@@ -50,7 +50,7 @@
               <el-icon><tickets /></el-icon>
               <span>订单管理</span>
             </template>
-            <el-menu-item index="order-list">
+            <el-menu-item index="/order">
               <el-icon><document /></el-icon>
               <span>订单列表</span>
             </el-menu-item>
