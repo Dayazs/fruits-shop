@@ -7,6 +7,8 @@ import {
   payOrder,
   payCallback,
   getAdminOrderList,
+  getAdminOrderDetail,
+  adminUpdateOrder,
   shipOrder,
 } from '../controllers/order.controller'
 import { authenticate, isAdmin } from '../middleware/auth'
@@ -23,8 +25,10 @@ router.post('/pay', authenticate, payOrder)
 // ─── 支付回调（微信服务器 JSON，无需认证）───
 router.post('/pay-callback', payCallback)
 
-// ─── 管理端 ───
+// ─── 管理端（需管理员认证）───
 router.get('/admin/list', authenticate, isAdmin, getAdminOrderList)
+router.get('/admin/:orderId', authenticate, isAdmin, getAdminOrderDetail)
+router.patch('/admin/:orderId', authenticate, isAdmin, adminUpdateOrder)
 router.patch('/admin/:orderId/ship', authenticate, isAdmin, shipOrder)
 
 export default router
