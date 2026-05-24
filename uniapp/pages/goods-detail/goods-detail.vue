@@ -170,9 +170,16 @@
 	}
 
 	const handleBuyNow = () => {
-		uni.showToast({
-			title: '功能开发中',
-			icon: 'none'
+		if (!selectedSku.value.id) {
+			uni.showToast({ title: '请选择规格', icon: 'none' })
+			return
+		}
+		if (selectedSku.value.stock === 0) {
+			uni.showToast({ title: '该规格已售罄', icon: 'none' })
+			return
+		}
+		uni.navigateTo({
+			url: `/pages/order-confirm/order-confirm?direct=true&fruit_id=${goods.value.id}&sku_id=${selectedSku.value.id}`
 		})
 	}
 
