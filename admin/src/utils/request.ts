@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 
 // 创建axios实例
 const request = axios.create({
-  baseURL: import.meta.env.BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json;charset=UTF-8',
@@ -45,7 +45,13 @@ request.interceptors.response.use(
       const msg = err.response.data?.msg
       switch (status) {
         case 401:
-          ElMessage.error(msg)
+          localStorage.removeItem('token')
+          localStorage.removeItem('userInfo')
+          localStorage.removeItem('permissions')
+          ElMessage.error(msg || '登录已过期，请重新登录')
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 1500)
           break
         case 403:
           ElMessage.error('没有权限访问')
