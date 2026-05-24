@@ -26,6 +26,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { cartCount, refreshCartCount } from '@/stores/cart.js'
 
 const currentIndex = ref(0)
@@ -73,19 +74,17 @@ function updateCurrentIndex() {
 
 function handleSwitchTab(index) {
   const target = tabList[index]
-  uni.switchTab({
-    url: target.pagePath,
-    success: () => {
-      currentIndex.value = index
-    }
-  })
+  uni.switchTab({ url: target.pagePath })
 }
 
 onMounted(() => {
+  updateCurrentIndex()
   refreshCartCount()
 })
 
-updateCurrentIndex()
+onShow(() => {
+  updateCurrentIndex()
+})
 </script>
 
 <style>
