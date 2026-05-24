@@ -49,7 +49,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import CustomTabBar from '@/components/custom-tab-bar.vue'
 import { homeApi, userApi, IMG_BASE } from '@/utils/api.js'
 import { refreshCartCount } from '@/stores/cart.js'
@@ -65,12 +65,41 @@ onLoad(async () => {
     const list = (res.data || []).slice()
     list.sort((a, b) => b.sort_order - a.sort_order)
     categories.value = list
-    if (list.length > 0) {
-      activeCatId.value = list[0].id
-      await loadGoods(list[0].id)
+    if (list.length === 0) return
+
+
+    // 支持从首页传入的分类自动选中
+    const targetCategoryId = uni.getStorageSync('targetCategoryId')
+    if (targetCategoryId) {
+      console.log('[分类页] 收到首页传入的 targetCategoryId:', targetCategoryId)
+      uni.removeStorageSync('targetCategoryId')
+      const targetId = parseInt(targetCategoryId)
+      const found = list.find(c => c.id === targetId)
+      if (found) {
+      console.log('[分类页] 查找结果: ', found.name)
+        activeCatId.value = found.id
+        await loadGoods(found.id)
+        return
+      }
     }
+    activeCatId.value = list[0].id
+    await loadGoods(list[0].id)
   } catch (err) {
     console.error('分类页数据加载失败', err)
+  }
+})
+
+onShow(() => {
+  const targetCategoryId = uni.getStorageSync('targetCategoryId')
+  if (targetCategoryId) {
+    const targetId = parseInt(targetCategoryId)
+    const found = categories.value.find(c => c.id === targetId)
+    if (found && activeCatId.value !== found.id) {
+      uni.removeStorageSync('targetCategoryId')
+      console.log('[分类页 onShow] 切换至: ', found.name)
+      activeCatId.value = found.id
+      loadGoods(found.id)
+    }
   }
 })
 
@@ -89,6 +118,7 @@ async function handleCatChange(cat) {
   if (activeCatId.value === cat.id) return
   activeCatId.value = cat.id
   searchKeyword.value = ''
+  console.log('[分类页] 用户点击: ', cat.name)
   await loadGoods(cat.id)
 }
 
