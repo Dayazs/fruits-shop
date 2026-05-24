@@ -80,12 +80,15 @@
 	import {
 		userApi,
 		orderApi,
+		homeApi,
 		IMG_BASE
 	} from '@/utils/api.js'
 	import {
 		refreshCartCount
 	} from '@/stores/cart.js'
 
+	const directMode = ref(false)
+	const directSkuId = ref(null)
 	const cartIds = ref([])
 	const orderItems = ref([])
 	const addresses = ref([])
@@ -99,7 +102,11 @@
 	)
 
 	onLoad(async (options) => {
-		if (options && options.ids) {
+		if (options && options.direct === 'true') {
+			directMode.value = true
+			directSkuId.value = parseInt(options.sku_id)
+			await loadDirectData(parseInt(options.fruit_id), parseInt(options.sku_id))
+		} else if (options && options.ids) {
 			cartIds.value = options.ids.split(',').map(Number)
 			await loadData()
 		}
@@ -107,7 +114,7 @@
 
 	onShow(async () => {
 		// 从新增地址页返回时刷新地址列表
-		if (cartIds.value.length > 0) {
+		if (directMode.value || cartIds.value.length > 0) {
 			const addrRes = await userApi.getAddresses()
 			const list = addrRes.data || []
 			addresses.value = list
@@ -119,6 +126,44 @@
 			}
 		}
 	})
+
+	const loadDirectData = async (fruitId, skuId) => {
+		uni.showLoading({
+			title: '加载中...'
+		})
+		try {
+			const [goodsRes, addrRes] = await Promise.all([
+				homeApi.getGoodsDetail(fruitId),
+				userApi.getAddresses()
+			])
+			const goods = goodsRes.data
+			const sku = goods.skus.find(s => s.id === skuId)
+			if (!sku) throw new Error('规格不存在')
+			orderItems.value = [{
+				fruits: {
+					name: goods.name,
+					main_image: goods.main_image
+				},
+				fruit_skus: {
+					spec_name: sku.spec_name,
+					price: sku.price,
+					image: sku.image
+				},
+				quantity: 1
+			}]
+			addresses.value = addrRes.data || []
+			if (addresses.value.length > 0) {
+				selectedAddress.value = addresses.value.find(a => a.is_default === 1) || addresses.value[0]
+			}
+		} catch (err) {
+			uni.showToast({
+				title: err.msg || '加载失败',
+				icon: 'none'
+			})
+		} finally {
+			uni.hideLoading()
+		}
+	}
 
 	const loadData = async () => {
 		uni.showLoading({
@@ -183,10 +228,15 @@
 			title: '提交中...'
 		})
 		try {
-			const res = await orderApi.createOrder({
-				cart_ids: cartIds.value,
-				address_id: selectedAddress.value.id
-			})
+			const res = directMode.value ?
+				await orderApi.directBuy({
+					sku_id: directSkuId.value,
+					address_id: selectedAddress.value.id
+				}) :
+				await orderApi.createOrder({
+					cart_ids: cartIds.value,
+					address_id: selectedAddress.value.id
+				})
 			orderId.value = res.data.id
 			orderCreated.value = true
 			refreshCartCount()
@@ -245,9 +295,7 @@
 						icon: 'success'
 					})
 					setTimeout(() => {
-						uni.redirectTo({
-							url: '/pages/order-list/order-list?status=1'
-						})
+						uni.navigateBack()
 					}, 1000)
 				},
 				fail: (err) => {
@@ -272,9 +320,7 @@
 										icon: 'success'
 									})
 									setTimeout(() => {
-										uni.redirectTo({
-											url: '/pages/order-list/order-list?status=1'
-										})
+										uni.navigateBack()
 									}, 1000)
 								} else {
 									uni.showToast({
@@ -440,7 +486,7 @@
 		bottom: 0;
 		left: 0;
 		right: 0;
-		height: 100rpx;
+		height: 160rpx;
 		background-color: #fff;
 		display: flex;
 		align-items: center;
@@ -479,6 +525,7 @@
 		font-size: 28rpx;
 		border-radius: 12rpx;
 		border: none;
+		margin-right: 20rpx;
 	}
 
 	.pay-btn {
@@ -490,6 +537,7 @@
 		font-size: 28rpx;
 		border-radius: 12rpx;
 		border: none;
+		margin-right: 20rpx;
 	}
 
 	/* 地址选择弹窗 */
