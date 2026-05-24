@@ -143,6 +143,65 @@ export const orderService = {
     })
   },
 
+  // 直接购买（不经过购物车）
+  async directBuy(
+    userId: number,
+    skuId: number,
+    addressId: number,
+    remark?: string,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const sku = await tx.fruit_skus.findUnique({
+        where: { id: skuId },
+        include: { fruits: true },
+      })
+      if (!sku) throw new Error('商品不存在')
+      if (sku.stock <= 0) throw new Error('商品库存不足')
+
+      const address = await tx.addresses.findFirst({
+        where: { id: addressId, user_id: userId },
+      })
+      if (!address) throw new Error('收货地址不存在')
+
+      const price = sku.price
+      const now = new Date()
+      const orderNo = generateOrderNo()
+
+      const order = await tx.orders.create({
+        data: {
+          order_no: orderNo,
+          user_id: userId,
+          total_amount: price,
+          status: ORDER_STATUS.PENDING_PAY,
+          address_id: addressId,
+          remark: remark || null,
+          created_at: now,
+          updated_at: now,
+        },
+      })
+
+      await tx.order_items.create({
+        data: {
+          order_id: order.id,
+          fruit_id: sku.fruit_id,
+          sku_id: skuId,
+          fruit_name: sku.fruits.name,
+          spec_name: sku.spec_name,
+          price,
+          quantity: 1,
+          total_price: price,
+          created_at: now,
+          updated_at: now,
+        },
+      })
+
+      return tx.orders.findUnique({
+        where: { id: order.id },
+        include: { order_items: true, addresses: true },
+      })
+    })
+  },
+
   // 获取订单列表
   async getOrderList(
     userId: number,
