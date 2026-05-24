@@ -210,14 +210,19 @@
 	}
 	const handleCheckout = () => {
 		if (selectedCount.value === 0) {
-			uni.showToast({ title: '请选择商品', icon: 'none' })
+			uni.showToast({
+				title: '请选择商品',
+				icon: 'none'
+			})
 			return
 		}
 		const ids = cartList.value
 			.filter(i => selectedIds.value.has(i.id))
 			.map(i => i.id)
 			.join(',')
-		uni.navigateTo({ url: `/pages/order-confirm/order-confirm?ids=${ids}` })
+		uni.navigateTo({
+			url: `/pages/order-confirm/order-confirm?ids=${ids}`
+		})
 	}
 	const handleGoShop = () => {
 		uni.switchTab({
@@ -454,6 +459,7 @@
 		border-radius: 12rpx;
 		border: none;
 		margin-left: auto;
+		margin-right: 20rpx;
 	}
 
 	.settle-btn.disabled {
