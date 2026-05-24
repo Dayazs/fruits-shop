@@ -120,16 +120,15 @@
             </el-breadcrumb>
           </div>
           <div class="header-right">
-            <el-dropdown trigger="click">
+            <el-dropdown trigger="click" @command="handleCommand">
               <div class="user-info">
                 <el-avatar :size="32" icon="UserFilled" />
-                <span class="username">管理员</span>
+                <span class="username">{{ authStore.username }}</span>
                 <el-icon><arrow-down /></el-icon>
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item>个人中心</el-dropdown-item>
-                  <el-dropdown-item divided>退出登录</el-dropdown-item>
+                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -147,6 +146,8 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
 import {
   Apple,
   HomeFilled,
@@ -171,6 +172,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const isCollapse = ref(false)
 
 const activeMenu = computed(() => route.path)
@@ -179,6 +181,21 @@ const breadcrumbTitle = computed(() => route.meta.title as string | undefined)
 
 const toggleCollapse = () => {
   isCollapse.value = !isCollapse.value
+}
+
+const handleCommand = async (command: string) => {
+  if (command === 'logout') {
+    try {
+      await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+      authStore.logout()
+    } catch {
+      // 用户取消
+    }
+  }
 }
 </script>
 
