@@ -54,7 +54,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Apple, User, Lock } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance } from 'element-plus'
-import request from '@/utils/request'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const formRef = ref<FormInstance>()
@@ -73,30 +73,14 @@ const rules = {
   ],
 }
 
-interface LoginResult {
-  id: number
-  username: string
-  avatar: string | null
-  role: string
-  permissions: string[]
-  token: string
-}
-
 const handleLogin = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
 
   loading.value = true
   try {
-    const data = (await request.post('/api/admin/login', {
-      username: form.username,
-      password: form.password,
-    })) as LoginResult
-
-    localStorage.setItem('userInfo', JSON.stringify(data))
-    localStorage.setItem('token', data.token)
-    localStorage.setItem('permissions', JSON.stringify(data.permissions))
-
+    const authStore = useAuthStore()
+    await authStore.login(form.username, form.password)
     ElMessage.success('登录成功')
     router.push('/')
   } catch {
