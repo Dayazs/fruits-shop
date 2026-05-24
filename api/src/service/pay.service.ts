@@ -12,6 +12,90 @@ const NOTIFY_URL = process.env.PAY_NOTIFY_URL || ''
 const API_CERT_PATH = process.env.PAY_CERT_PATH || ''
 const API_KEY_PATH = process.env.PAY_KEY_PATH || ''
 const API_SERIAL_NO = process.env.PAY_SERIAL_NO || ''
+const API_PLATFORM_CERT_PATH = process.env.PAY_PLATFORM_CERT_PATH || ''
+
+// 微信支付平台证书缓存（用于回调验签）
+interface PlatformCert {
+  serial_no: string
+  public_key: string
+  expires_at: number
+}
+
+let platformCerts: PlatformCert[] = []
+
+// 解密 AES-256-GCM 数据（用于解密回调 resource 和平台证书）
+const decryptAes256Gcm = (
+  associatedData: string,
+  nonce: string,
+  ciphertext: string,
+): string => {
+  const key = Buffer.from(API_V3_KEY)
+  const ciphertextBuffer = Buffer.from(ciphertext, 'base64')
+  const authTag = ciphertextBuffer.subarray(ciphertextBuffer.length - 16)
+  const data = ciphertextBuffer.subarray(0, ciphertextBuffer.length - 16)
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(nonce, 'utf-8'), {
+    authTagLength: 16,
+  })
+  decipher.setAuthTag(authTag)
+  decipher.setAAD(Buffer.from(associatedData, 'utf-8'))
+
+  return Buffer.concat([
+    decipher.update(data),
+    decipher.final(),
+  ]).toString('utf-8')
+}
+
+// 从微信 API 获取平台证书列表
+const fetchPlatformCertificates = async (): Promise<PlatformCert[]> => {
+  const path = '/v3/certificates'
+  const { data } = await axios.get(`${WXPAY_HOST}${path}`, {
+    headers: {
+      Accept: 'application/json',
+      ...makeAuthHeader('GET', path, ''),
+    },
+  })
+
+  const certs: PlatformCert[] = []
+  for (const item of data.data) {
+    const publicKey = decryptAes256Gcm(
+      item.encrypt_certificate.associated_data,
+      item.encrypt_certificate.nonce,
+      item.encrypt_certificate.ciphertext,
+    )
+    certs.push({
+      serial_no: item.serial_no,
+      public_key: publicKey,
+      expires_at: new Date(item.expire_time).getTime(),
+    })
+  }
+  return certs
+}
+
+// 获取平台证书用于验签（优先内存缓存，其次本地文件，最后远程拉取）
+const getPlatformCert = async (serialNo: string): Promise<string | null> => {
+  // 1. 内存缓存
+  const cached = platformCerts.find(
+    (c) => c.serial_no === serialNo && c.expires_at > Date.now(),
+  )
+  if (cached) return cached.public_key
+
+  // 2. 本地平台证书文件
+  if (API_PLATFORM_CERT_PATH && fs.existsSync(API_PLATFORM_CERT_PATH)) {
+    return fs.readFileSync(API_PLATFORM_CERT_PATH, 'utf-8')
+  }
+
+  // 3. 远程拉取并缓存
+  try {
+    platformCerts = await fetchPlatformCertificates()
+    const fresh = platformCerts.find(
+      (c) => c.serial_no === serialNo && c.expires_at > Date.now(),
+    )
+    return fresh?.public_key || null
+  } catch {
+    return null
+  }
+}
 
 // 微信支付 V3 域名
 const WXPAY_HOST = 'https://api.mch.weixin.qq.com'
@@ -55,28 +139,6 @@ const makeAuthHeader = (
   }
 }
 
-// AES-256-GCM 解密回调数据
-const decryptCallbackData = (
-  associatedData: string,
-  nonce: string,
-  ciphertext: string,
-): string => {
-  const key = Buffer.from(API_V3_KEY)
-  const ciphertextBuffer = Buffer.from(ciphertext, 'base64')
-  const authTag = ciphertextBuffer.subarray(ciphertextBuffer.length - 16)
-  const data = ciphertextBuffer.subarray(0, ciphertextBuffer.length - 16)
-
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(nonce, 'utf-8'), {
-    authTagLength: 16,
-  })
-  decipher.setAuthTag(authTag)
-  decipher.setAAD(Buffer.from(associatedData, 'utf-8'))
-
-  return Buffer.concat([
-    decipher.update(data),
-    decipher.final(),
-  ]).toString('utf-8')
-}
 
 export const payService = {
   // V3 JSAPI 统一下单 → 返回小程序调起支付参数
@@ -150,9 +212,10 @@ export const payService = {
   // V3 支付回调处理
   async handlePayCallback(
     headers: Record<string, string>,
+    rawBody: string,
     body: Record<string, any>,
   ) {
-    // V3 回调：需要验证签名并解密 resource
+    // V3 回调：需要用原始 body 字符串验证签名
     const signature = headers['wechatpay-signature']
     const timestamp = headers['wechatpay-timestamp']
     const nonce = headers['wechatpay-nonce']
@@ -162,17 +225,21 @@ export const payService = {
       return { code: 'FAIL', message: '缺少签名参数' }
     }
 
-    // 验证签名
-    const message = `${timestamp}\n${nonce}\n${JSON.stringify(body)}\n`
-    const publicKey = API_CERT_PATH ? fs.readFileSync(API_CERT_PATH, 'utf-8') : ''
+    // 验证签名：必须使用微信支付平台证书（公钥），不能用商户证书
+    const message = `${timestamp}\n${nonce}\n${rawBody}\n`
+    const publicKey = await getPlatformCert(serialNo || '')
     if (publicKey) {
       const verified = crypto
         .createVerify('RSA-SHA256')
         .update(message)
         .verify(publicKey, signature, 'base64')
       if (!verified) {
+        console.error('签名验证失败')
         return { code: 'FAIL', message: '签名验证失败' }
       }
+    } else {
+      console.error('未找到平台证书，无法验签')
+      return { code: 'FAIL', message: '未找到平台证书' }
     }
 
     // 解密 resource
@@ -181,7 +248,7 @@ export const payService = {
       return { code: 'FAIL', message: '缺少 resource' }
     }
 
-    const decrypted = decryptCallbackData(
+    const decrypted = decryptAes256Gcm(
       resource.associated_data || '',
       resource.nonce || '',
       resource.ciphertext || '',
