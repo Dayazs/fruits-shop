@@ -1,11 +1,13 @@
 import { Router } from 'express'
 import {
   createOrder,
+  directBuy,
   getOrderList,
   getOrderDetail,
   cancelOrder,
   payOrder,
   paySuccess,
+  confirmReceipt,
   payCallback,
   getAdminOrderList,
   getAdminOrderDetail,
@@ -43,10 +45,12 @@ router.post(
 
 // ─── C 端（需登录）───
 router.post('/', authenticate, createOrder)
+router.post('/direct-buy', authenticate, directBuy)
 router.post('/pay', authenticate, payOrder)
 router.get('/', authenticate, getOrderList)
 router.get('/:orderId', authenticate, getOrderDetail)
 router.patch('/:orderId/cancel', authenticate, cancelOrder)
 router.patch('/:orderId/pay-success', authenticate, paySuccess)
+router.patch('/:orderId/confirm-receipt', authenticate, confirmReceipt)
 
 export default router
