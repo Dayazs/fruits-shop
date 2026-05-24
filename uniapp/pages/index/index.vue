@@ -96,7 +96,9 @@ function formatPrice(val) {
 }
 
 const handleCategoryTap = (cat) => {
-  uni.showToast({ title: cat.name, icon: 'none' })
+  console.log('[首页] 点击分类 ->', { id: cat.id, name: cat.name })
+  uni.setStorageSync('targetCategoryId', cat.id)
+  uni.switchTab({ url: '/pages/category/category' })
 }
 
 const handleGoodsTap = (goods) => {
