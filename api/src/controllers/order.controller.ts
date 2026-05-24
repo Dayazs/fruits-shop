@@ -92,6 +92,23 @@ export const payOrder = async (req: Request, res: Response) => {
   }
 }
 
+// 直接购买（不经过购物车）
+export const directBuy = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id
+    const { sku_id, address_id } = req.body
+
+    if (!sku_id || !address_id) {
+      return res.status(400).json({ code: 400, msg: '参数不完整' })
+    }
+
+    const data = await orderService.directBuy(userId, parseInt(sku_id), parseInt(address_id))
+    res.status(200).json({ code: 200, msg: '下单成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
 // 支付成功确认（小程序端 wx.requestPayment 成功后调用）
 export const paySuccess = async (req: Request, res: Response) => {
   try {
@@ -112,6 +129,29 @@ export const paySuccess = async (req: Request, res: Response) => {
     const data = await orderService.updateOrderStatus(orderId, ORDER_STATUS.PENDING_SHIP)
 
     res.status(200).json({ code: 200, msg: '支付成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 确认收货（买家操作）
+export const confirmReceipt = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id
+    const orderId = parseInt(req.params.orderId as string)
+
+    const order = await prisma.orders.findFirst({
+      where: { id: orderId, user_id: userId },
+    })
+    if (!order) {
+      return res.status(404).json({ code: 404, msg: '订单不存在' })
+    }
+    if (order.status !== ORDER_STATUS.PENDING_RECEIVE) {
+      return res.status(400).json({ code: 400, msg: '订单状态不允许此操作' })
+    }
+
+    const data = await orderService.updateOrderStatus(orderId, ORDER_STATUS.COMPLETED)
+    res.status(200).json({ code: 200, msg: '确认收货成功', data })
   } catch (err: any) {
     res.status(400).json({ code: 400, msg: err.message })
   }
