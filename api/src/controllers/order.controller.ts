@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { orderService, ORDER_STATUS } from '../service/order.service'
 import { payService } from '../service/pay.service'
+import prisma from '../lib/prisma'
 
 // ─── C 端接口 ───
 
@@ -84,8 +85,33 @@ export const payOrder = async (req: Request, res: Response) => {
       userId,
       openid,
     )
-
     res.status(200).json({ code: 200, msg: '获取支付参数成功', data })
+  } catch (err: any) {
+    console.log(err)
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// 支付成功确认（小程序端 wx.requestPayment 成功后调用）
+export const paySuccess = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.id
+    const orderId = parseInt(req.params.orderId as string)
+
+    // 校验订单归属和状态
+    const order = await prisma.orders.findFirst({
+      where: { id: orderId, user_id: userId },
+    })
+    if (!order) {
+      return res.status(404).json({ code: 404, msg: '订单不存在' })
+    }
+    if (order.status !== ORDER_STATUS.PENDING_PAY) {
+      return res.status(400).json({ code: 400, msg: '订单状态不允许此操作' })
+    }
+
+    const data = await orderService.updateOrderStatus(orderId, ORDER_STATUS.PENDING_SHIP)
+
+    res.status(200).json({ code: 200, msg: '支付成功', data })
   } catch (err: any) {
     res.status(400).json({ code: 400, msg: err.message })
   }
@@ -99,9 +125,15 @@ export const payCallback = async (req: Request, res: Response) => {
       headers[key.toLowerCase()] = req.headers[key] as string
     }
 
-    const result = await payService.handlePayCallback(headers, req.body)
+    const rawBody = (req as any).rawBody as string
+    const result = await payService.handlePayCallback(headers, rawBody, req.body)
+    console.log('pay callback result:', result)
 
-    res.status(200).json({ code: result.code, message: result.message })
+    if (result.code === 'SUCCESS') {
+      res.status(200).json({ code: result.code, message: result.message })
+    } else {
+      res.status(400).json({ code: result.code, message: result.message })
+    }
   } catch (err: any) {
     res.status(500).json({ code: 'FAIL', message: err.message })
   }
