@@ -396,6 +396,7 @@ DELETE /api/user/cart/{cartId}
 | GET | `/{orderId}` | 订单详情 | 是 |
 | PATCH | `/{orderId}/cancel` | 取消订单 | 是 |
 | POST | `/pay` | 发起支付 | 是 |
+| PATCH | `/{orderId}/pay-success` | 支付成功确认 | 是 |
 | POST | `/pay-callback` | 微信支付回调 | 否 |
 | GET | `/admin/list` | 管理端：订单列表（分页+筛选） | 管理员 |
 | GET | `/admin/{orderId}` | 管理端：订单详情 | 管理员 |
