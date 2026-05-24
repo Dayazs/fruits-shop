@@ -10,7 +10,6 @@
         </view>
 
         <view class="card-address" v-if="order.addresses">
-          <text class="addr-icon">&#127968;</text>
           <view class="addr-info">
             <text class="addr-contact">{{ order.addresses.receiver_name }} {{ order.addresses.receiver_mobile }}</text>
             <text class="addr-full">{{ order.addresses.province }} {{ order.addresses.city }} {{ order.addresses.district }} {{ order.addresses.detail_address }}</text>
@@ -39,13 +38,14 @@
           <view class="footer-actions">
             <button v-if="order.status === 0" class="action-btn cancel" @tap="handleCancel(order)">取消订单</button>
             <button v-if="order.status === 0" class="action-btn pay" @tap="handlePayOrder(order)">立即支付</button>
+            <button v-if="order.status === 2" class="action-btn confirm" @tap="handleConfirmReceipt(order)">确认收货</button>
           </view>
         </view>
       </view>
     </view>
 
     <view v-else-if="!loading" class="empty-state">
-      <text class="empty-icon">&#128230;</text>
+      <text class="empty-img">&#128230;</text>
       <text class="empty-text">暂无相关订单</text>
     </view>
   </view>
@@ -89,6 +89,23 @@ const fetchOrders = async () => {
     orders.value = res.data?.list || []
   } catch (err) { orders.value = [] }
   finally { loading.value = false }
+}
+
+const handleConfirmReceipt = (order) => {
+  uni.showModal({
+    title: '确认收货', content: '确定已收到商品吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await orderApi.confirmReceipt(order.id)
+          uni.showToast({ title: '确认收货成功', icon: 'success' })
+          fetchOrders()
+        } catch (err) {
+          uni.showToast({ title: err.msg || '操作失败', icon: 'none' })
+        }
+      }
+    }
+  })
 }
 
 const handleCancel = (order) => {
@@ -154,25 +171,23 @@ const handlePayOrder = async (order) => {
 </script>
 
 <style>
-.page { min-height: 100vh; background-color: #f5f5f5; padding-bottom: 40rpx; }
-.order-list { padding: 20rpx; }
+.page { min-height: 100vh; background-color: #f5f5f5; padding: 20rpx 20rpx calc(40rpx + env(safe-area-inset-bottom)); }
 .order-card {
   background-color: #fff; border-radius: 16rpx; margin-bottom: 20rpx;
   overflow: hidden; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
 }
 .card-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 20rpx 24rpx; border-bottom: 1rpx solid #f5f5f5;
+  padding: 24rpx 24rpx; border-bottom: 1rpx solid #f5f5f5;
 }
 .order-no { font-size: 24rpx; color: #999; }
 .status-badge { padding: 6rpx 18rpx; border-radius: 6rpx; }
 .status-label { font-size: 24rpx; color: #fff; font-weight: 500; }
 
 .card-address {
-  display: flex; padding: 20rpx 24rpx; background-color: #fafafa;
-  border-bottom: 1rpx solid #f0f0f0;
+  display: flex; align-items: center; padding: 20rpx 24rpx;
+  background-color: #fafafa; border-bottom: 1rpx solid #f0f0f0;
 }
-.addr-icon { font-size: 32rpx; margin-right: 12rpx; line-height: 1.2; }
 .addr-info { flex: 1; display: flex; flex-direction: column; gap: 6rpx; }
 .addr-contact { font-size: 26rpx; color: #333; font-weight: 500; }
 .addr-full { font-size: 24rpx; color: #999; line-height: 1.4; }
@@ -190,7 +205,7 @@ const handlePayOrder = async (order) => {
 .goods-info { flex: 1; margin-left: 16rpx; }
 .goods-name { font-size: 28rpx; color: #333; font-weight: 500; display: block; margin-bottom: 4rpx; }
 .goods-spec { font-size: 23rpx; color: #999; display: block; margin-bottom: 6rpx; }
-.goods-price-row { display: flex; align-items: baseline; gap: 12rpx; }
+.goods-price-row { display: flex; align-items: baseline; justify-content: space-between; }
 .goods-price { font-size: 28rpx; color: #e74c3c; font-weight: bold; }
 .goods-qty { font-size: 24rpx; color: #999; }
 
@@ -206,8 +221,10 @@ const handlePayOrder = async (order) => {
 .action-btn.cancel::after { border: none; }
 .action-btn.pay { color: #fff; background-color: #e74c3c; border: none; }
 .action-btn.pay::after { border: none; }
+.action-btn.confirm { color: #fff; background-color: #09bb07; border: none; }
+.action-btn.confirm::after { border: none; }
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 300rpx; }
-.empty-icon { font-size: 100rpx; margin-bottom: 24rpx; }
-.empty-text { font-size: 30rpx; color: #ccc; }
+.empty-state { display: flex; flex-direction: column; align-items: center; padding-top: 200rpx; }
+.empty-img { font-size: 120rpx; opacity: 0.5; margin-bottom: 24rpx; }
+.empty-text { font-size: 28rpx; color: #ccc; }
 </style>
