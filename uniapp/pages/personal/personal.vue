@@ -51,6 +51,7 @@
 		userApi,
 		IMG_BASE
 	} from '@/utils/api.js'
+		import { cartCount } from '@/stores/cart.js'
 
 	const userInfo = reactive({
 		id: 0,
@@ -170,12 +171,13 @@
 			success: (res) => {
 				if (res.confirm) {
 					uni.removeStorageSync('token')
+					cartCount.value = 0
 					uni.showToast({
 						title: '已退出登录',
 						icon: 'none'
 					})
 					setTimeout(() => {
-						uni.navigateBack()
+						uni.switchTab({ url: '/pages/mine/mine' })
 					}, 1000)
 				}
 			}
