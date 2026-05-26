@@ -47,6 +47,7 @@ import { ref, reactive } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import CustomTabBar from '@/components/custom-tab-bar.vue'
 import { userApi, orderApi, IMG_BASE } from '@/utils/api.js'
+import { refreshCartCount } from '@/stores/cart.js'
 
 const isLoggedIn = ref(false)
 const agreed = ref(false)
@@ -75,6 +76,7 @@ const checkLoginStatus = () => {
     fetchOrderCounts()
   } else {
     isLoggedIn.value = false
+    orderCounts.value = { 0: 0, 1: 0, 2: 0 }
   }
 }
 
@@ -122,6 +124,7 @@ const handleWechatLogin = () => {
         uni.setStorageSync('token', res.data.token)
         Object.assign(userInfo, res.data)
         isLoggedIn.value = true
+        refreshCartCount()
         fetchOrderCounts()
         uni.showToast({ title: '登录成功', icon: 'success' })
       } catch (err) {
