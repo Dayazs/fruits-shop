@@ -1,5 +1,30 @@
 <template>
-  <view class="page">
+  <!-- ===== 骨架屏 ===== -->
+  <view v-if="loading" class="page">
+    <view class="skeleton banner-skeleton"></view>
+    <view class="category-section">
+      <view class="category-list">
+        <view class="category-item" v-for="i in 4" :key="i">
+          <view class="sku-circle"></view>
+          <view class="sku-line sku-line-sm"></view>
+        </view>
+      </view>
+    </view>
+    <view v-for="i in 2" :key="i" class="special-section">
+      <view class="sku-block sku-banner"></view>
+      <view class="goods-grid">
+        <view class="goods-card" v-for="j in 4" :key="j">
+          <view class="sku-block sku-goods-img"></view>
+          <view class="sku-line" style="margin: 12rpx 16rpx 0;"></view>
+          <view class="sku-line sku-line-sm" style="margin: 8rpx 16rpx 0; width: 60%;"></view>
+        </view>
+      </view>
+    </view>
+    <CustomTabBar />
+  </view>
+
+  <!-- ===== 真实内容 ===== -->
+  <view v-else class="page">
     <swiper class="banner-swiper" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500"
       :circular="true" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
       <swiper-item v-for="banner in banners" :key="banner.id">
@@ -39,11 +64,11 @@
       </view>
     </view>
 
-    <view class="placeholder" v-if="specialCategories.length === 0">
+    <view class="placeholder" v-if="!loading && specialCategories.length === 0">
       <text class="placeholder-text">更多内容即将上线</text>
     </view>
   </view>
-  <CustomTabBar />
+  <CustomTabBar v-if="!loading" />
 </template>
 
 <script setup>
@@ -51,8 +76,9 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import CustomTabBar from '@/components/custom-tab-bar.vue'
 import { homeApi, userApi, IMG_BASE } from '@/utils/api.js'
-import { refreshCartCount } from '@/stores/cart.js'
+import { refreshCartCount, requireLogin } from '@/stores/cart.js'
 
+const loading = ref(true)
 const banners = ref([])
 const topCategories = ref([])
 const specialCategories = ref([])
@@ -86,6 +112,8 @@ onLoad(async () => {
     }
   } catch (err) {
     console.error('首页数据加载失败', err)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -96,6 +124,7 @@ function formatPrice(val) {
 }
 
 const handleCategoryTap = (cat) => {
+  if (!requireLogin()) return
   console.log('[首页] 点击分类 ->', { id: cat.id, name: cat.name })
   uni.setStorageSync('targetCategoryId', cat.id)
   uni.switchTab({ url: '/pages/category/category' })
@@ -106,6 +135,7 @@ const handleGoodsTap = (goods) => {
 }
 
 const handleAddToCart = async (goods) => {
+  if (!requireLogin()) return
   try {
     await userApi.addToCart({ fruit_id: goods.id })
     await refreshCartCount()
@@ -171,4 +201,29 @@ const handleAddToCart = async (goods) => {
 
 .placeholder { display: flex; align-items: center; justify-content: center; padding: 100rpx 0; }
 .placeholder-text { font-size: 26rpx; color: #ccc; }
+
+/* ========== 骨架屏 ========== */
+.skeleton { position: relative; overflow: hidden; }
+.banner-skeleton { width: 750rpx; height: 440rpx; background-color: #e8e8e8; }
+.sku-circle {
+  width: 75rpx; height: 75rpx; border-radius: 50%;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite;
+}
+.sku-line {
+  height: 26rpx; background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4rpx;
+}
+.sku-line-sm { height: 20rpx; width: 80%; }
+.sku-block {
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8rpx;
+}
+.sku-banner { width: 750rpx; height: 258rpx; }
+.sku-goods-img { width: 335rpx; height: 335rpx; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 </style>
