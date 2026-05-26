@@ -16,8 +16,11 @@ const API_PLATFORM_CERT_PATH = process.env.PAY_PLATFORM_CERT_PATH || ''
 
 // 微信支付平台证书缓存（用于回调验签）
 interface PlatformCert {
+  // 证书序列号
   serial_no: string
+  // PEM 格式公钥
   public_key: string
+  // 过期时间
   expires_at: number
 }
 
@@ -34,16 +37,20 @@ const decryptAes256Gcm = (
   const authTag = ciphertextBuffer.subarray(ciphertextBuffer.length - 16)
   const data = ciphertextBuffer.subarray(0, ciphertextBuffer.length - 16)
 
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(nonce, 'utf-8'), {
-    authTagLength: 16,
-  })
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    key,
+    Buffer.from(nonce, 'utf-8'),
+    {
+      authTagLength: 16,
+    },
+  )
   decipher.setAuthTag(authTag)
   decipher.setAAD(Buffer.from(associatedData, 'utf-8'))
 
-  return Buffer.concat([
-    decipher.update(data),
-    decipher.final(),
-  ]).toString('utf-8')
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString(
+    'utf-8',
+  )
 }
 
 // 从微信 API 获取平台证书列表
@@ -103,7 +110,9 @@ const WXPAY_HOST = 'https://api.mch.weixin.qq.com'
 // 读取商户私钥（pem 证书）
 const loadPrivateKey = (): string => {
   if (!API_KEY_PATH || !fs.existsSync(API_KEY_PATH)) {
-    throw new Error('商户私钥文件不存在，请将 apiclient_key.pem 放到 certs/ 目录')
+    throw new Error(
+      '商户私钥文件不存在，请将 apiclient_key.pem 放到 certs/ 目录',
+    )
   }
   return fs.readFileSync(API_KEY_PATH, 'utf-8')
 }
@@ -138,7 +147,6 @@ const makeAuthHeader = (
     Authorization: `WECHATPAY2-SHA256-RSA2048 mchid="${MCH_ID}",nonce_str="${nonceStr}",timestamp="${timestamp}",serial_no="${API_SERIAL_NO}",signature="${signature}"`,
   }
 }
-
 
 export const payService = {
   // V3 JSAPI 统一下单 → 返回小程序调起支付参数
