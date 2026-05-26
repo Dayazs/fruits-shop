@@ -29,7 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login(username: string, password: string) {
-    const data = await request.post('/api/admin/login', { username, password })
+    const data = await request.post('/api/admin/login', { username, password }) as any
     const info: AdminInfo = {
       id: data.id,
       username: data.username,
