@@ -1,65 +1,87 @@
 <template>
 	<view class="page">
-		<view v-if="cartList.length > 0" class="stats-bar">
-			<view class="select-all" @tap="toggleSelectAll">
-				<view class="checkbox" :class="{ checked: isAllSelected }">
-					<text v-if="isAllSelected" class="check-mark">&#10003;</text>
-				</view>
-				<text class="select-all-text">全选</text>
-			</view>
-			<text class="stats-text">
-				共 {{ totalItems }} 件，已选 {{ selectedCount }} 件
-			</text>
-		</view>
 
-		<view v-if="cartList.length > 0" class="stats-placeholder"></view>
-
-		<view v-if="cartList.length > 0" class="cart-list">
-			<view class="cart-item" v-for="item in cartList" :key="item.id">
-				<view class="checkbox" :class="{ checked: selectedIds.has(item.id) }" @tap="toggleSelect(item.id)">
-					<text v-if="selectedIds.has(item.id)" class="check-mark">&#10003;</text>
-				</view>
-				<image class="item-image" :src="IMG_BASE + getItemImage(item)" mode="aspectFill"></image>
-				<view class="item-info">
-					<text class="item-name">{{ item.fruits.name }}</text>
-					<text class="item-spec">{{ item.fruit_skus.spec_name }}</text>
-					<text class="item-price">&#165;{{ formatPrice(item.fruit_skus.price) }}</text>
-				</view>
-				<view class="item-actions">
-					<view class="qty-row">
-						<view class="qty-btn" :class="{ disabled: item.quantity <= 1 }" @tap="handleMinus(item)">
-							<text class="qty-text">-</text>
-						</view>
-						<text class="qty-num">{{ item.quantity }}</text>
-						<view class="qty-btn" @tap="handlePlus(item)">
-							<text class="qty-text">+</text>
-						</view>
+		<!-- ===== 骨架屏 ===== -->
+		<view v-if="loading" class="page">
+			<view class="stats-placeholder" style="height: 76rpx;"></view>
+			<view class="cart-list">
+				<view class="cart-item" v-for="i in 4" :key="i">
+					<view class="sku-circle-sm"></view>
+					<view class="sku-block" style="width: 160rpx; height: 160rpx; flex-shrink: 0; border-radius: 8rpx;">
 					</view>
-					<view class="bottom-row">
-						<text class="item-subtotal">
-							小计 &#165;{{ formatPrice(item.fruit_skus.price * item.quantity) }}
-						</text>
-						<button class="remove-btn" @tap="handleRemove(item)">删除</button>
+					<view class="item-info">
+						<view class="sku-line" style="width: 60%;"></view>
+						<view class="sku-line sku-line-sm" style="width: 40%; margin-top: 10rpx;"></view>
+						<view class="sku-line sku-line-sm" style="width: 30%; margin-top: 10rpx;"></view>
 					</view>
 				</view>
 			</view>
+			<CustomTabBar />
 		</view>
 
-		<view v-else-if="!loading" class="empty-state">
-			<text class="empty-icon">&#128722;</text>
-			<text class="empty-text">空空如也，去逛逛吧</text>
-			<button class="go-shop-btn" @tap="handleGoShop">继续逛逛</button>
-		</view>
-
-		<view v-if="cartList.length > 0" class="settle-bar">
-			<view class="settle-left">
-				<text class="settle-label">合计：</text>
-				<text class="settle-price">&#165;{{ formatPrice(selectedTotal) }}</text>
+		<!-- ===== 真实内容 ===== -->
+		<view v-else class="page">
+			<view v-if="cartList.length > 0" class="stats-bar">
+				<view class="select-all" @tap="toggleSelectAll">
+					<view class="checkbox" :class="{ checked: isAllSelected }">
+						<text v-if="isAllSelected" class="check-mark">&#10003;</text>
+					</view>
+					<text class="select-all-text">全选</text>
+				</view>
+				<text class="stats-text">
+					共 {{ totalItems }} 件，已选 {{ selectedCount }} 件
+				</text>
 			</view>
-			<button class="settle-btn" :class="{ disabled: selectedCount === 0 }" :disabled="selectedCount === 0"
-				@tap="handleCheckout">
-				结算
-			</button>
+
+			<view v-if="cartList.length > 0" class="stats-placeholder"></view>
+
+			<view v-if="cartList.length > 0" class="cart-list">
+				<view class="cart-item" v-for="item in cartList" :key="item.id">
+					<view class="checkbox" :class="{ checked: selectedIds.has(item.id) }" @tap="toggleSelect(item.id)">
+						<text v-if="selectedIds.has(item.id)" class="check-mark">&#10003;</text>
+					</view>
+					<image class="item-image" :src="IMG_BASE + getItemImage(item)" mode="aspectFill"></image>
+					<view class="item-info">
+						<text class="item-name">{{ item.fruits.name }}</text>
+						<text class="item-spec">{{ item.fruit_skus.spec_name }}</text>
+						<text class="item-price">&#165;{{ formatPrice(item.fruit_skus.price) }}</text>
+					</view>
+					<view class="item-actions">
+						<view class="qty-row">
+							<view class="qty-btn" :class="{ disabled: item.quantity <= 1 }" @tap="handleMinus(item)">
+								<text class="qty-text">-</text>
+							</view>
+							<text class="qty-num">{{ item.quantity }}</text>
+							<view class="qty-btn" @tap="handlePlus(item)">
+								<text class="qty-text">+</text>
+							</view>
+						</view>
+						<view class="bottom-row">
+							<text class="item-subtotal">
+								小计 &#165;{{ formatPrice(item.fruit_skus.price * item.quantity) }}
+							</text>
+							<button class="remove-btn" @tap="handleRemove(item)">删除</button>
+						</view>
+					</view>
+				</view>
+			</view>
+
+			<view v-else-if="!loading" class="empty-state">
+				<text class="empty-icon">&#128722;</text>
+				<text class="empty-text">空空如也，去逛逛吧</text>
+				<button class="go-shop-btn" @tap="handleGoShop">继续逛逛</button>
+			</view>
+
+			<view v-if="cartList.length > 0" class="settle-bar">
+				<view class="settle-left">
+					<text class="settle-label">合计：</text>
+					<text class="settle-price">&#165;{{ formatPrice(selectedTotal) }}</text>
+				</view>
+				<button class="settle-btn" :class="{ disabled: selectedCount === 0 }" :disabled="selectedCount === 0"
+					@tap="handleCheckout">
+					结算
+				</button>
+			</view>
 		</view>
 	</view>
 	<CustomTabBar />
@@ -80,7 +102,8 @@
 		IMG_BASE
 	} from '@/utils/api.js'
 	import {
-		refreshCartCount
+		refreshCartCount,
+			requireLogin
 	} from '@/stores/cart.js'
 
 	const cartList = ref([])
@@ -209,6 +232,7 @@
 		})
 	}
 	const handleCheckout = () => {
+		if (!requireLogin()) return
 		if (selectedCount.value === 0) {
 			uni.showToast({
 				title: '请选择商品',
@@ -494,5 +518,48 @@
 		font-size: 30rpx;
 		border-radius: 12rpx;
 		border: none;
+	}
+
+	n
+
+	/* ========== 骨架屏 ========== */
+	.sku-circle-sm {
+		width: 40rpx;
+		height: 40rpx;
+		border-radius: 50%;
+		flex-shrink: 0;
+		margin-right: 16rpx;
+		background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+	}
+
+	.sku-line {
+		height: 26rpx;
+		background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: 4rpx;
+	}
+
+	.sku-line-sm {
+		height: 20rpx;
+	}
+
+	.sku-block {
+		background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+		background-size: 200% 100%;
+		animation: shimmer 1.5s infinite;
+		border-radius: 8rpx;
+	}
+
+	@keyframes shimmer {
+		0% {
+			background-position: -200% 0;
+		}
+
+		100% {
+			background-position: 200% 0;
+		}
 	}
 </style>
