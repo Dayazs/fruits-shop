@@ -1,5 +1,33 @@
 <template>
-	<view class="page" v-if="goods">
+	<!-- ===== 骨架屏 ===== -->
+	<view v-if="loading" class="page">
+		<view class="sku-block" style="width: 750rpx; height: 440rpx;"></view>
+		<view class="info-section">
+			<view class="sku-line" style="width: 60%; margin-bottom: 16rpx;"></view>
+			<view class="sku-line sku-line-sm" style="width: 30%; margin-bottom: 12rpx;"></view>
+			<view class="sku-line sku-line-sm" style="width: 90%;"></view>
+		</view>
+		<view class="sku-section">
+			<view class="sku-line" style="width: 80rpx; margin-bottom: 20rpx;"></view>
+			<view class="sku-row" v-for="i in 4" :key="i">
+				<view class="sku-left">
+					<view class="sku-line" style="width: 120rpx;"></view>
+					<view class="sku-line sku-line-sm" style="width: 80rpx; margin-top: 8rpx;"></view>
+				</view>
+				<view class="sku-line sku-line-sm" style="width: 60rpx;"></view>
+			</view>
+		</view>
+		<view class="bottom-bar">
+			<view class="sku-circle" style="width: 70rpx; height: 70rpx;"></view>
+			<view class="bar-right">
+				<view class="sku-block" style="width: 180rpx; height: 64rpx; border-radius: 10rpx;"></view>
+				<view class="sku-block" style="width: 180rpx; height: 64rpx; border-radius: 10rpx;"></view>
+			</view>
+		</view>
+	</view>
+
+	<!-- ===== 真实内容 ===== -->
+	<view class="page" v-else-if="goods">
 		<!-- ========== 顶部轮播图 ========== -->
 		<swiper class="banner-swiper" :indicator-dots="imageList.length > 1" :autoplay="false" :circular="true"
 			indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
@@ -80,9 +108,11 @@
 	} from '@/utils/api.js'
 	import {
 		cartCount,
-		refreshCartCount
+		refreshCartCount,
+			requireLogin
 	} from '@/stores/cart.js'
 
+	const loading = ref(true)
 	const goods = ref(null)
 	const selectedSku = ref({})
 	const showAllSkus = ref(false)
@@ -129,6 +159,8 @@
 				title: err.msg || '加载失败',
 				icon: 'none'
 			})
+		} finally {
+			loading.value = false
 		}
 	}
 
@@ -144,6 +176,7 @@
 	}
 
 	const handleAddToCart = async () => {
+			if (!requireLogin()) return
 		if (!selectedSku.value.id) {
 			uni.showToast({
 				title: '请选择规格',
@@ -170,6 +203,7 @@
 	}
 
 	const handleBuyNow = () => {
+			if (!requireLogin()) return
 		if (!selectedSku.value.id) {
 			uni.showToast({ title: '请选择规格', icon: 'none' })
 			return
@@ -434,4 +468,25 @@
 		border-radius: 10rpx;
 		border: none;
 	}
+n/* ========== 骨架屏 ========== */
+.sku-circle {
+  border-radius: 50%;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite;
+}
+.sku-line {
+  height: 26rpx;
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4rpx;
+}
+.sku-line-sm { height: 20rpx; }
+.sku-block {
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8rpx;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 </style>
