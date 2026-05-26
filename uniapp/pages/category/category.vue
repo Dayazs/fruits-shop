@@ -11,40 +11,63 @@
     </view>
 
     <view class="main-body">
-      <scroll-view class="left-sidebar" scroll-y>
-        <view v-for="cat in categories" :key="cat.id" class="sidebar-item"
-          :class="{ active: activeCatId === cat.id }" @tap="handleCatChange(cat)">
-          <view v-if="activeCatId === cat.id" class="active-bar"></view>
-          <text class="sidebar-text">{{ cat.name }}</text>
-        </view>
-      </scroll-view>
+      <!-- ===== 骨架屏 ===== -->
+      <template v-if="loading">
+        <scroll-view class="left-sidebar" scroll-y>
+          <view class="sidebar-item" v-for="i in 6" :key="i">
+            <view class="sku-line" style="width: 80rpx; margin: 0 auto;"></view>
+          </view>
+        </scroll-view>
+        <scroll-view class="right-goods" scroll-y>
+          <view class="goods-grid">
+            <view class="goods-card" v-for="i in 4" :key="i">
+              <view class="sku-block" style="width: 172rpx; height: 172rpx;"></view>
+              <view style="padding: 16rpx;">
+                <view class="sku-line" style="width: 80%;"></view>
+                <view class="sku-line sku-line-sm" style="width: 50%; margin-top: 10rpx;"></view>
+              </view>
+            </view>
+          </view>
+        </scroll-view>
+      </template>
 
-      <scroll-view class="right-goods" scroll-y>
-        <view v-if="goodsList.length > 0" class="goods-grid">
-          <view class="goods-card" v-for="goods in goodsList" :key="goods.id" @tap="handleGoodsTap(goods)">
-            <image :src="IMG_BASE + goods.main_image" mode="aspectFill" class="goods-image"></image>
-            <view class="goods-info">
-              <text class="goods-title">{{ goods.name }}</text>
-              <view class="goods-bottom">
-                <view class="price-area">
-                  <text class="price-current">&#165;{{ formatPrice(goods.first_sku_price) }}</text>
-                  <text v-if="goods.first_sku_original_price"
-                    class="price-original">&#165;{{ formatPrice(goods.first_sku_original_price) }}</text>
-                </view>
-                <view class="cart-btn" @tap.stop="handleAddToCart(goods)">
-                  <image src="/static/icons/shopping_trolley_item.svg" class="cart-icon" mode="aspectFit"></image>
+      <!-- ===== 真实内容 ===== -->
+      <template v-else>
+        <scroll-view class="left-sidebar" scroll-y>
+          <view v-for="cat in categories" :key="cat.id" class="sidebar-item"
+            :class="{ active: activeCatId === cat.id }" @tap="handleCatChange(cat)">
+            <view v-if="activeCatId === cat.id" class="active-bar"></view>
+            <text class="sidebar-text">{{ cat.name }}</text>
+          </view>
+        </scroll-view>
+
+        <scroll-view class="right-goods" scroll-y>
+          <view v-if="goodsList.length > 0" class="goods-grid">
+            <view class="goods-card" v-for="goods in goodsList" :key="goods.id" @tap="handleGoodsTap(goods)">
+              <image :src="IMG_BASE + goods.main_image" mode="aspectFill" class="goods-image"></image>
+              <view class="goods-info">
+                <text class="goods-title">{{ goods.name }}</text>
+                <view class="goods-bottom">
+                  <view class="price-area">
+                    <text class="price-current">&#165;{{ formatPrice(goods.first_sku_price) }}</text>
+                    <text v-if="goods.first_sku_original_price"
+                      class="price-original">&#165;{{ formatPrice(goods.first_sku_original_price) }}</text>
+                  </view>
+                  <view class="cart-btn" @tap.stop="handleAddToCart(goods)">
+                    <image src="/static/icons/shopping_trolley_item.svg" class="cart-icon" mode="aspectFit"></image>
+                  </view>
                 </view>
               </view>
             </view>
           </view>
-        </view>
-        <view v-else class="empty-state">
-          <text class="empty-text">暂无商品</text>
-        </view>
-      </scroll-view>
+          <view v-else class="empty-state">
+            <text class="empty-text">暂无商品</text>
+          </view>
+        </scroll-view>
+      </template>
     </view>
   </view>
-  <CustomTabBar />
+  <CustomTabBar v-if="!loading" />
 </template>
 
 <script setup>
@@ -52,8 +75,9 @@ import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import CustomTabBar from '@/components/custom-tab-bar.vue'
 import { homeApi, userApi, IMG_BASE } from '@/utils/api.js'
-import { refreshCartCount } from '@/stores/cart.js'
+import { refreshCartCount, requireLogin } from '@/stores/cart.js'
 
+const loading = ref(true)
 const categories = ref([])
 const activeCatId = ref(null)
 const goodsList = ref([])
@@ -86,6 +110,8 @@ onLoad(async () => {
     await loadGoods(list[0].id)
   } catch (err) {
     console.error('分类页数据加载失败', err)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -136,11 +162,13 @@ function formatPrice(val) {
 }
 
 const handleGoodsTap = (goods) => {
-  uni.navigateTo({ url: `/pages/goods-detail/goods-detail?id=${goods.id}` })
+  if (!requireLogin()) return
+	  uni.navigateTo({ url: `/pages/goods-detail/goods-detail?id=${goods.id}` })
 }
 
 const handleAddToCart = async (goods) => {
   try {
+    if (!requireLogin()) return
     await userApi.addToCart({ fruit_id: goods.id })
     await refreshCartCount()
     uni.showToast({ title: '已加入购物车', icon: 'success' })
@@ -219,4 +247,20 @@ const handleAddToCart = async (goods) => {
 
 .empty-state { display: flex; align-items: center; justify-content: center; padding-top: 200rpx; }
 .empty-text { font-size: 28rpx; color: #ccc; }
+
+/* ========== 骨架屏 ========== */
+.sku-line {
+  height: 26rpx; background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4rpx;
+}
+.sku-line-sm { height: 20rpx; }
+.sku-block {
+  background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8rpx;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 </style>
