@@ -19,3 +19,14 @@ export async function refreshCartCount() {
     // 静默失败
   }
 }
+
+// 登录状态守卫：未登录时提示并跳转到"我的"页面
+export function requireLogin() {
+  const token = uni.getStorageSync('token')
+  if (!token) {
+    uni.showToast({ title: '请先登录', icon: 'none' })
+    uni.switchTab({ url: '/pages/mine/mine' })
+    return false
+  }
+  return true
+}
