@@ -54,6 +54,10 @@ export const userService = {
       throw new Error('用户不存在')
     }
 
+    if (exisUser.status === 0) {
+      throw new Error('该用户已被禁用')
+    }
+
     // 校验密码
     const isVaild = await bcrypt.compare(password, exisUser.password)
     if (!isVaild) {
@@ -120,6 +124,10 @@ export const userService = {
     })
 
     if (user) {
+      // 检查用户是否被禁用
+      if (user.status === 0) {
+        throw new Error('该用户已被禁用')
+      }
       // 已有用户：更新昵称和头像（如果传入）
       if (nickname || avatar) {
         user = await prisma.users.update({
