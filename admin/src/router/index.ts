@@ -60,6 +60,12 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/user/UserList.vue'),
         meta: { title: '用户管理', requiresAuth: true, permission: 'admin' },
       },
+      {
+        path: 'role',
+        name: 'Role',
+        component: () => import('@/views/admin/RoleList.vue'),
+        meta: { title: '角色管理', requiresAuth: true, permission: 'admin' },
+      },
     ],
   },
 ]
