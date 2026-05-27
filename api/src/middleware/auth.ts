@@ -38,3 +38,22 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
     res.status(403).json({ code: 403, msg: '权限不足' })
   }
 }
+
+// 权限校验中间件：接受一个或多个权限值，满足其一即放行
+export const requirePermission =
+  (...requiredPerms: string[]) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ code: 401, msg: '未授权' })
+    }
+    if (req.user.type !== 'admin') {
+      return res.status(403).json({ code: 403, msg: '权限不足' })
+    }
+    const perms: string[] = req.user.permissions || []
+    // 超级管理员拥有所有权限
+    if (perms.includes('*')) return next()
+    // 满足任意一个即可
+    if (requiredPerms.some((p) => perms.includes(p))) return next()
+
+    return res.status(403).json({ code: 403, msg: '权限不足' })
+  }
