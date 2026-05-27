@@ -519,6 +519,16 @@ PATCH /api/order/admin/{orderId}/ship
 | PATCH | `/users/:id` | 编辑用户信息 | 管理员 |
 | PATCH | `/users/:id/status` | 切换用户启用/禁用 | 管理员 |
 | PATCH | `/users/:id/reset-password` | 重置用户密码 | 管理员 |
+| GET | `/admins` | 管理员列表 | admin 权限 |
+| POST | `/admins` | 创建管理员 | admin 权限 |
+| PATCH | `/admins/:id` | 编辑管理员 | admin 权限 |
+| DELETE | `/admins/:id` | 删除管理员 | admin 权限 |
+| GET | `/roles` | 角色列表 | admin 权限 |
+| POST | `/roles` | 创建角色 | admin 权限 |
+| PATCH | `/roles/:id` | 编辑角色 | admin 权限 |
+| DELETE | `/roles/:id` | 删除角色 | admin 权限 |
+
+> **权限说明**：管理员登录时 JWT 中注入 `permissions` 数组，`*` 为超级管理员通配符。`/admins` 和 `/roles` 路由需 `requirePermission('admin')` 中间件校验。
 
 #### 管理员登录
 
@@ -592,6 +602,124 @@ GET /api/admin/users/export?username=小明&status=1
 ```
 
 认证：管理员。支持与用户列表相同的筛选参数（不含分页）。返回 `.xlsx` 文件流，包含 ID / 用户名 / 邮箱 / 手机号 / 状态 / 订单数 / 注册时间列，表头灰色加粗 + 数据行边框。
+
+---
+
+### 管理员管理 `/api/admin/admins`
+
+需要 `admin` 权限或超级管理员（`*`）。
+
+#### 管理员列表
+
+```
+GET /api/admin/admins?page=1&pageSize=10&username=test
+```
+
+返回分页列表，每项含 `username`, `roles: { id, name }`。
+
+#### 创建管理员
+
+```
+POST /api/admin/admins
+Content-Type: application/json
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | string | 是 | 管理员用户名（唯一） |
+| password | string | 是 | 密码，至少 6 位 |
+| role_id | number | 否 | 角色 ID |
+
+#### 编辑管理员
+
+```
+PATCH /api/admin/admins/:id
+Content-Type: application/json
+```
+
+所有字段可选。`password` 传入则更新密码，留空保留原密码。
+
+#### 删除管理员
+
+```
+DELETE /api/admin/admins/:id
+```
+
+### 角色管理 `/api/admin/roles`
+
+需要 `admin` 权限或超级管理员（`*`）。
+
+#### 角色列表
+
+```
+GET /api/admin/roles
+```
+
+返回所有角色，每项含 `name`, `permissions`（JSON 字符串数组）。
+
+#### 创建角色
+
+```
+POST /api/admin/roles
+Content-Type: application/json
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 角色名称（唯一） |
+| permissions | string[] | 是 | 权限值数组，如 `["goods","order"]` |
+
+#### 编辑角色
+
+```
+PATCH /api/admin/roles/:id
+Content-Type: application/json
+```
+
+所有字段可选。
+
+#### 删除角色
+
+```
+DELETE /api/admin/roles/:id
+```
+
+前置条件：该角色下没有管理员，否则返回错误。
+
+### 权限定义
+
+`GET /api/admin/permissions` 返回 `permissions` 表中定义的所有权限，包含 `value`、`name`、`parent_value`（父子层级）、`description`。
+
+| 权限值 | 名称 | 父级 | 说明 |
+|--------|------|------|------|
+| `*` | 超级管理员 | — | 所有操作 |
+| `dashboard` | 仪表盘 | — | 控制台/仪表盘 |
+| `goods` | 商品管理 | — | 商品管理目录 |
+| `goods:add` | 商品添加 | goods | 添加商品 |
+| `goods:edit` | 商品编辑 | goods | 编辑商品 |
+| `goods:toggle` | 商品上下架 | goods | 上/下架 |
+| `category` | 分类管理 | — | 分类管理目录 |
+| `category:add` | 分类添加 | category | 添加分类 |
+| `category:edit` | 分类编辑 | category | 编辑分类 |
+| `category:delete` | 分类删除 | category | 删除分类 |
+| `order` | 订单管理 | — | 订单管理目录 |
+| `order:edit` | 订单编辑 | order | 编辑订单 |
+| `order:delete` | 订单删除 | order | 删除订单 |
+| `user` | 用户管理 | — | 用户管理目录 |
+| `user:edit` | 用户编辑 | user | 编辑用户 |
+| `user:delete` | 用户删除 | user | 删除用户 |
+| `site` | 站点管理 | — | 站点配置 |
+| `permission` | 角色管理 | — | 角色权限管理 |
+| `admin` | 管理员管理 | — | 管理员管理目录 |
+| `admin:add` | 管理员添加 | admin | 添加管理员 |
+| `admin:edit` | 管理员编辑 | admin | 编辑管理员 |
+| `admin:delete` | 管理员删除 | admin | 删除管理员 |
+| `banner` | 轮播图管理 | — | 管理 Banner |
+| `banner:add` | 添加 Banner | banner | 添加轮播图 |
+| `banner:edit` | 编辑 Banner | banner | 编辑轮播图 |
+| `banner:delete` | 删除 Banner | banner | 删除轮播图 |
+
+JWT payload 中注入 `permissions` 数组，`requirePermission` 中间件从 token 中直接读取，无需数据库查询。
 
 ---
 
