@@ -144,3 +144,111 @@ export const exportUsers = async (req: Request, res: Response) => {
     res.status(500).json({ code: 500, msg: err.message })
   }
 }
+
+// ─── 管理员管理 ───
+
+export const getAdminList = async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const pageSize = parseInt(req.query.pageSize as string) || 10
+    const username = req.query.username as string | undefined
+    const data = await adminService.getAdminList({ page, pageSize, username })
+    res.status(200).json({ code: 200, msg: '获取成功', data })
+  } catch (err: any) {
+    res.status(500).json({ code: 500, msg: err.message })
+  }
+}
+
+export const createAdmin = async (req: Request, res: Response) => {
+  try {
+    const { username, password, role_id } = req.body
+    const data = await adminService.createAdmin(username, password, role_id)
+    res.status(200).json({ code: 200, msg: '创建成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+export const updateAdmin = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id)
+    const { username, password, role_id } = req.body
+    const data = await adminService.updateAdmin(id, { username, password, role_id })
+    res.status(200).json({ code: 200, msg: '更新成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+export const deleteAdmin = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id)
+    const data = await adminService.deleteAdmin(id)
+    res.status(200).json({ code: 200, msg: '删除成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// ─── 角色管理 ───
+
+export const getRoleList = async (_req: Request, res: Response) => {
+  try {
+    const data = await adminService.getRoleList()
+    res.status(200).json({ code: 200, msg: '获取成功', data })
+  } catch (err: any) {
+    res.status(500).json({ code: 500, msg: err.message })
+  }
+}
+
+export const createRole = async (req: Request, res: Response) => {
+  try {
+    const { name, permissions } = req.body
+    const data = await adminService.createRole(name, permissions)
+    res.status(200).json({ code: 200, msg: '创建成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+export const updateRole = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id)
+    const { name, permissions } = req.body
+    const data = await adminService.updateRole(id, { name, permissions })
+    res.status(200).json({ code: 200, msg: '更新成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+export const deleteRole = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id)
+    const data = await adminService.deleteRole(id)
+    res.status(200).json({ code: 200, msg: '删除成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
+
+// ─── 权限定义 ───
+
+export const getPermissionList = async (_req: Request, res: Response) => {
+  try {
+    const data = await adminService.getPermissionList()
+    res.status(200).json({ code: 200, msg: '获取成功', data })
+  } catch (err: any) {
+    res.status(500).json({ code: 500, msg: err.message })
+  }
+}
+
+// 获取当前管理员最新信息（含 DB 中最新权限，非 JWT 缓存）
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    const data = await adminService.getMe(req.user.id)
+    res.status(200).json({ code: 200, msg: '获取成功', data })
+  } catch (err: any) {
+    res.status(400).json({ code: 400, msg: err.message })
+  }
+}
