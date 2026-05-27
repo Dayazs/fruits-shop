@@ -14,7 +14,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '../controllers/goods.controller'
-import { authenticate, isAdmin } from '../middleware/auth'
+import { authenticate, isAdmin, requirePermission } from '../middleware/auth'
 import { upload } from '../middleware/upload'
 import { removeDir } from '../utils/file'
 
@@ -37,26 +37,35 @@ const handleUpload = (req: Request, res: Response, next: NextFunction) => {
   })
 }
 
-const withUpload = [handleUpload, autoCleanupTemp, authenticate, isAdmin]
-const withAuth = [authenticate, isAdmin]
+const auth = [authenticate, isAdmin] as any[]
+const rp = requirePermission
+
+const goodsList = [...auth, rp('goods')]
+const goodsAdd = [...auth, rp('goods:add')]
+const goodsEdit = [...auth, rp('goods:edit')]
+const goodsToggle = [...auth, rp('goods:toggle')]
+const catAdd = [...auth, rp('category:add')]
+const catEdit = [...auth, rp('category:edit')]
+const catDelete = [...auth, rp('category:delete')]
+const withUpload = (perms: any[]) => [handleUpload, autoCleanupTemp, ...perms]
 
 // ─── 固定路径（必须在带参路由前）───
-router.get('/admin/list', ...withAuth, getAdminGoodsList)
-router.get('/admin/categories', ...withAuth, getCategories)
-router.get('/admin/recycle', ...withAuth, getRecycleBin)
-router.post('/admin/create', ...withUpload, createGoods)
+router.get('/admin/list', ...goodsList, getAdminGoodsList)
+router.get('/admin/categories', ...goodsList, getCategories)
+router.get('/admin/recycle', ...goodsList, getRecycleBin)
+router.post('/admin/create', ...withUpload(goodsAdd), createGoods)
 
-// ─── 分类增/改/删（固定 "categories" 段，在 :goodsId 前）───
-router.post('/admin/categories', ...withUpload, createCategory)
-router.patch('/admin/categories/:categoryId', ...withUpload, updateCategory)
-router.delete('/admin/categories/:categoryId', ...withAuth, deleteCategory)
+// ─── 分类增/改/删 ───
+router.post('/admin/categories', ...withUpload(catAdd), createCategory)
+router.patch('/admin/categories/:categoryId', ...withUpload(catEdit), updateCategory)
+router.delete('/admin/categories/:categoryId', ...catDelete, deleteCategory)
 
 // ─── :goodsId 参数路由 ───
-router.get('/admin/:goodsId/skus', ...withAuth, getGoodsSkus)
-router.patch('/admin/:goodsId', ...withUpload, updateGoods)
-router.patch('/admin/:goodsId/status', ...withAuth, toggleGoodsStatus)
-router.patch('/admin/:goodsId/restoregoods', ...withAuth, restoreGoods)
-router.delete('/admin/:goodsId', ...withAuth, softDeleteGoods)
-router.delete('/admin/:goodsId/hard', ...withAuth, hardDeleteGoods)
+router.get('/admin/:goodsId/skus', ...goodsList, getGoodsSkus)
+router.patch('/admin/:goodsId', ...withUpload(goodsEdit), updateGoods)
+router.patch('/admin/:goodsId/status', ...goodsToggle, toggleGoodsStatus)
+router.patch('/admin/:goodsId/restoregoods', ...goodsList, restoreGoods)
+router.delete('/admin/:goodsId', ...goodsList, softDeleteGoods)
+router.delete('/admin/:goodsId/hard', ...goodsList, hardDeleteGoods)
 
 export default router
