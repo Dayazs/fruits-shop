@@ -42,27 +42,34 @@
           <el-input v-model="form.name" placeholder="请输入角色名称" style="width: 260px" />
         </el-form-item>
         <el-form-item label="权限" class="perm-form-item">
-          <el-checkbox-group v-model="form.permissions">
-            <div class="perm-grid">
-              <template v-for="group in permGroups" :key="group.parent">
-                <div class="perm-group">
-                  <div class="perm-group-title" @click="toggleGroup(group.parent)">
-                    <el-icon class="toggle-arrow" :class="{ expanded: expandedGroups.has(group.parent) }">
-                      <ArrowRight />
-                    </el-icon>
-                    <el-checkbox :value="group.parent" @click.stop>
-                      {{ permLabelMap[group.parent] || group.parent }}
-                    </el-checkbox>
-                  </div>
-                  <div v-show="expandedGroups.has(group.parent) && group.children.length > 0" class="perm-children">
-                    <el-checkbox v-for="child in group.children" :key="child.value" :value="child.value">
-                      {{ child.name }}
-                    </el-checkbox>
-                  </div>
+          <div class="perm-grid">
+            <template v-for="group in permGroups" :key="group.parent">
+              <div class="perm-group">
+                <div class="perm-group-title" @click="group.children.length > 0 && toggleGroup(group.parent)">
+                  <el-icon v-if="group.children.length > 0" class="toggle-arrow" :class="{ expanded: expandedGroups.has(group.parent) }">
+                    <ArrowRight />
+                  </el-icon>
+                  <span v-else class="toggle-arrow toggle-placeholder"></span>
+                  <el-checkbox
+                    :model-value="isParentChecked(group.parent, group.children)"
+                    :indeterminate="isParentIndeterminate(group.parent, group.children)"
+                    @change="(val: any) => onParentChange(group.parent, group.children, val)"
+                  >
+                    {{ permLabelMap[group.parent] || group.parent }}
+                  </el-checkbox>
                 </div>
-              </template>
-            </div>
-          </el-checkbox-group>
+                <div v-show="expandedGroups.has(group.parent) && group.children.length > 0" class="perm-children">
+                  <el-checkbox
+                    v-for="child in group.children" :key="child.value"
+                    :model-value="form.permissions.includes(child.value)"
+                    @change="(val: any) => onChildChange(child.value, val)"
+                  >
+                    {{ child.name }}
+                  </el-checkbox>
+                </div>
+              </div>
+            </template>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -99,25 +106,56 @@ const dialogTitle = computed(() => isEdit.value ? '编辑角色' : '新增角色
 const expandedGroups = ref(new Set<string>())
 
 function toggleGroup(value: string) {
-  if (expandedGroups.value.has(value)) {
-    expandedGroups.value.delete(value)
-  } else {
-    expandedGroups.value.add(value)
-  }
-  // trigger reactivity
-  expandedGroups.value = new Set(expandedGroups.value)
+  const next = new Set(expandedGroups.value)
+  if (next.has(value)) next.delete(value)
+  else next.add(value)
+  expandedGroups.value = next
 }
 
-// 打开编辑时自动展开有已选权限的分组
+// ─── 父子复选框联动 ───
+
+function isParentChecked(parent: string, children: PermItem[]): boolean {
+  if (!children.length) return form.permissions.includes(parent)
+  return children.every(c => form.permissions.includes(c.value))
+}
+
+function isParentIndeterminate(parent: string, children: PermItem[]): boolean {
+  if (!children.length) return false
+  const some = children.some(c => form.permissions.includes(c.value))
+  const all = children.every(c => form.permissions.includes(c.value))
+  return some && !all
+}
+
+function onParentChange(parent: string, children: PermItem[], checked: boolean) {
+  if (checked) {
+    // 勾选父 → 添加父和所有子
+    const toAdd = [parent, ...children.map(c => c.value)]
+    form.permissions = [...new Set([...form.permissions, ...toAdd])]
+  } else {
+    // 取消父 → 移除父和所有子
+    const toRemove = new Set([parent, ...children.map(c => c.value)])
+    form.permissions = form.permissions.filter(p => !toRemove.has(p))
+  }
+}
+
+function onChildChange(value: string, checked: boolean) {
+  if (checked) {
+    form.permissions = [...new Set([...form.permissions, value])]
+  } else {
+    form.permissions = form.permissions.filter(p => p !== value)
+  }
+}
+
+// ─── 编辑/创建 ───
+
 function openEdit(row: RoleItem) {
   isEdit.value = true; editId.value = row.id
   form.name = row.name
   const perms = parsePermissions(row.permissions)
   form.permissions = perms
-  // 展开包含已选权限的分组
   const toExpand = new Set<string>()
   for (const group of permGroups.value) {
-    if (perms.includes(group.parent) || group.children.some(c => perms.includes(c.value))) {
+    if (group.children.length > 0 && (perms.includes(group.parent) || group.children.some(c => perms.includes(c.value)))) {
       toExpand.add(group.parent)
     }
   }
@@ -125,14 +163,21 @@ function openEdit(row: RoleItem) {
   dialogVisible.value = true
 }
 
-// 权限标签 -> 中文名映射
+function openCreate() {
+  isEdit.value = false; editId.value = 0
+  form.name = ''; form.permissions = []
+  expandedGroups.value = new Set()
+  dialogVisible.value = true
+}
+
+// ─── 数据获取 ───
+
 const permLabelMap = computed(() => {
   const map: Record<string, string> = {}
   for (const p of allPerms.value) map[p.value] = p.name
   return map
 })
 
-// 权限分组：父权限为一级，子权限嵌套其下
 const permGroups = computed(() => {
   const parents = allPerms.value.filter(p => !p.parent_value)
   return parents.map(parent => ({
@@ -147,25 +192,14 @@ function parsePermissions(p: string): string[] {
 }
 
 async function fetchPerms() {
-  try {
-    const res: any = await request.get('/api/admin/permissions')
-    allPerms.value = res || []
-  } catch { /* */ }
+  try { const res: any = await request.get('/api/admin/permissions'); allPerms.value = res || [] } catch { /* */ }
 }
-
 async function fetchList() {
   loading.value = true
-  try {
-    const res: any = await request.get('/api/admin/roles')
-    tableData.value = res || []
-  } finally { loading.value = false }
+  try { const res: any = await request.get('/api/admin/roles'); tableData.value = res || [] } finally { loading.value = false }
 }
 
-function openCreate() {
-  isEdit.value = false; editId.value = 0
-  form.name = ''; form.permissions = []
-  dialogVisible.value = true
-}
+// ─── CRUD ───
 
 async function handleSubmit() {
   const valid = await formRef.value?.validate().catch(() => false)
@@ -175,7 +209,7 @@ async function handleSubmit() {
     if (isEdit.value) {
       await request.patch(`/api/admin/roles/${editId.value}`, { name: form.name, permissions: form.permissions })
       ElMessage.success('更新成功')
-      useAuthStore().refresh() // 权限变更后刷新
+      useAuthStore().refresh()
     } else {
       await request.post('/api/admin/roles', { name: form.name, permissions: form.permissions })
       ElMessage.success('创建成功')
@@ -186,10 +220,8 @@ async function handleSubmit() {
 }
 
 async function handleDelete(row: RoleItem) {
-  try {
-    await request.delete(`/api/admin/roles/${row.id}`)
-    ElMessage.success('删除成功'); fetchList()
-  } catch (err: any) { ElMessage.error(err.response?.data?.msg || '删除失败') }
+  try { await request.delete(`/api/admin/roles/${row.id}`); ElMessage.success('删除成功'); fetchList() }
+  catch (err: any) { ElMessage.error(err.response?.data?.msg || '删除失败') }
 }
 
 onMounted(() => { fetchPerms(); fetchList() })
@@ -200,14 +232,11 @@ onMounted(() => { fetchPerms(); fetchList() })
 .action-btns { display: flex; align-items: center; gap: 8px; justify-content: center; }
 
 .perm-form-item { max-height: 420px; overflow-y: auto; }
-
 .perm-grid { display: flex; flex-direction: column; gap: 10px; width: 100%; }
 
 .perm-group {
-  padding: 10px 12px;
-  background: #fafafa;
-  border-radius: 8px;
-  border: 1px solid #eee;
+  padding: 10px 12px; background: #fafafa;
+  border-radius: 8px; border: 1px solid #eee;
 }
 
 .perm-group-title {
@@ -216,13 +245,11 @@ onMounted(() => { fetchPerms(); fetchList() })
   cursor: pointer; user-select: none;
 }
 
-.toggle-arrow {
-  font-size: 14px; transition: transform 0.2s; color: #909399; flex-shrink: 0;
-}
+.toggle-arrow { font-size: 14px; transition: transform 0.2s; color: #909399; flex-shrink: 0; }
 .toggle-arrow.expanded { transform: rotate(90deg); }
+.toggle-placeholder { width: 14px; }
 
 .perm-group-title .el-checkbox { font-weight: 600; }
-.perm-group-title .el-checkbox .el-checkbox__label { font-weight: 600; }
 
 .perm-children {
   display: flex; flex-wrap: wrap; gap: 6px 20px;
