@@ -13,14 +13,16 @@ src
 │  ├─ goods.route.ts           // 商品路由
 │  ├─ banner.route.ts          // 轮播图路由
 │  ├─ home.route.ts            // C 端首页路由
-│  └─ order.route.ts           // 订单路由
+│  ├─ order.route.ts           // 订单路由
+│  └─ dashboard.route.ts       // 仪表盘路由
 ├─ controllers/                // 控制器层
 │  ├─ user.controller.ts       // 用户控制器
 │  ├─ admin.controller.ts      // 管理员控制器
 │  ├─ goods.controller.ts      // 商品控制器
 │  ├─ banner.controller.ts     // 轮播图控制器
 │  ├─ home.controller.ts       // 首页控制器
-│  └─ order.controller.ts      // 订单控制器
+│  ├─ order.controller.ts      // 订单控制器
+│  └─ dashboard.controller.ts  // 仪表盘控制器
 ├─ service/                    // 业务层
 │  ├─ user.service.ts          // 用户业务
 │  ├─ admin.service.ts         // 管理员业务
@@ -28,6 +30,7 @@ src
 │  ├─ banner.service.ts        // 轮播图业务
 │  ├─ order.service.ts         // 订单业务
 │  ├─ pay.service.ts           // 支付业务
+│  ├─ dashboard.service.ts     // 仪表盘业务
 │  └─ cart.service.ts          // 购物车业务
 ├─ middleware/                  // 中间件
 │  ├─ auth.ts                  // 认证 + 管理员权限
@@ -54,6 +57,7 @@ src
 | `PAY_SERIAL_NO` | 商户证书序列号 |
 | `PAY_KEY_PATH` | 商户私钥路径（如 `./certs/apiclient_key.pem`） |
 | `PAY_CERT_PATH` | 商户证书路径（如 `./certs/apiclient_cert.pem`） |
+| `PAY_PLATFORM_CERT_PATH` | 微信支付平台证书路径（用于回调验签，可选） |
 | `PAY_NOTIFY_URL` | 微信支付回调地址（需外网可达） |
 
 ### 微信支付证书
@@ -92,6 +96,8 @@ pnpm start
 |------|------|------|------|
 | POST | `/login` | 用户登录（账号密码） | 否 |
 | POST | `/wx-login` | 微信一键登录 | 否 |
+
+> 用户被禁用（status=0）后，登录接口返回 400 错误 `"该用户已被禁用，请联系客服"`。
 | POST | `/register` | 用户注册 | 否 |
 | GET | `/profile` | 获取用户信息 | 是 |
 | PATCH | `/profile` | 更新用户信息 | 是 |
@@ -508,6 +514,84 @@ PATCH /api/order/admin/{orderId}/ship
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
 | POST | `/login` | 管理员登录 | 否 |
+| GET | `/users` | 用户列表（分页+筛选） | 管理员 |
+| GET | `/users/export` | 导出用户 Excel | 管理员 |
+| PATCH | `/users/:id` | 编辑用户信息 | 管理员 |
+| PATCH | `/users/:id/status` | 切换用户启用/禁用 | 管理员 |
+| PATCH | `/users/:id/reset-password` | 重置用户密码 | 管理员 |
+
+#### 管理员登录
+
+```
+POST /api/admin/login
+Content-Type: application/json
+```
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | string | 是 | 管理员用户名 |
+| password | string | 是 | 管理员密码 |
+
+#### 用户列表
+
+```
+GET /api/admin/users?page=1&pageSize=10&username=小明&status=1&startDate=2026-05-01&endDate=2026-05-24
+```
+
+认证：管理员
+
+| 参数 | 说明 |
+|------|------|
+| page | 页码，默认 1 |
+| pageSize | 每页条数，默认 10 |
+| username | 用户名模糊搜索 |
+| status | 0=禁用, 1=正常 |
+| startDate | 注册开始日期 `YYYY-MM-DD` |
+| endDate | 注册结束日期 `YYYY-MM-DD` |
+
+响应 `data.list` 每项包含 `id`, `username`, `email`, `mobile`, `avatar`, `openid`, `status`, `created_at`, `updated_at`, `_count: { orders, addresses }`。
+
+#### 编辑用户
+
+```
+PATCH /api/admin/users/:id
+Content-Type: application/json
+```
+
+认证：管理员。可选字段 `username`, `email`, `mobile`。修改用户名时检查是否重复。
+
+#### 切换用户状态
+
+```
+PATCH /api/admin/users/:id/status
+```
+
+认证：管理员。无需请求体，自动切换：正常 → 禁用，禁用 → 正常。返回更新后的用户状态。
+
+#### 重置密码
+
+```
+PATCH /api/admin/users/:id/reset-password
+Content-Type: application/json
+```
+
+认证：管理员。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| password | string | 是 | 新密码，至少 6 位 |
+
+密码通过 bcrypt 哈希后存储，不返回明文。
+
+> **注意**：用户被禁用（status=0）后，通过密码登录和微信登录均会返回错误 `"该用户已被禁用，请联系客服"`。
+
+#### 导出 Excel
+
+```
+GET /api/admin/users/export?username=小明&status=1
+```
+
+认证：管理员。支持与用户列表相同的筛选参数（不含分页）。返回 `.xlsx` 文件流，包含 ID / 用户名 / 邮箱 / 手机号 / 状态 / 订单数 / 注册时间列，表头灰色加粗 + 数据行边框。
 
 ---
 
@@ -1153,3 +1237,5 @@ GET /api/goods/admin/recycle?page=1&pageSize=10&keyword=苹果
 - **认证**：JWT（jsonwebtoken）
 - **文件上传**：multer + fs-extra
 - **密码加密**：bcryptjs
+- **Excel 导出**：exceljs（流式写入，支持样式）
+- **图片处理**：Sharp（上传时压缩/缩放）
