@@ -41,7 +41,7 @@ export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
 
 // 权限校验中间件：接受一个或多个权限值，满足其一即放行
 export const requirePermission =
-  (...requiredPerms: string[]) =>
+  (...requiredPerms: string[]): ((req: Request, res: Response, next: NextFunction) => void) =>
   (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ code: 401, msg: '未授权' })
