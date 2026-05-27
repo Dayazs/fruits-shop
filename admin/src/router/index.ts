@@ -54,6 +54,12 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('@/views/admin/index.vue'),
         meta: { title: '管理员页', requiresAuth: true, permission: 'admin' },
       },
+      {
+        path: 'user',
+        name: 'User',
+        component: () => import('@/views/user/UserList.vue'),
+        meta: { title: '用户管理', requiresAuth: true, permission: 'admin' },
+      },
     ],
   },
 ]
