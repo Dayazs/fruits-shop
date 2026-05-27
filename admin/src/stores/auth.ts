@@ -56,6 +56,25 @@ export const useAuthStore = defineStore('auth', () => {
     window.location.replace('/login')
   }
 
+  async function refresh() {
+    try {
+      const data = await request.get('/api/admin/me') as any
+      const info: AdminInfo = {
+        id: data.id,
+        username: data.username,
+        avatar: data.avatar,
+        role: data.role,
+        permissions: data.permissions,
+      }
+      userInfo.value = info
+      permissions.value = data.permissions
+      localStorage.setItem('userInfo', JSON.stringify(info))
+      localStorage.setItem('permissions', JSON.stringify(data.permissions))
+    } catch {
+      // 刷新失败不影响当前操作
+    }
+  }
+
   return {
     token,
     userInfo,
@@ -67,5 +86,6 @@ export const useAuthStore = defineStore('auth', () => {
     hasPermission,
     login,
     logout,
+    refresh,
   }
 })
