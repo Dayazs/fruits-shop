@@ -51,7 +51,7 @@
     <!-- 操作栏与表格 -->
     <el-card class="table-card">
       <div class="table-header">
-        <el-button type="primary" :icon="Plus" @click="handleAdd"
+        <el-button v-if="canAdd" type="primary" :icon="Plus" @click="handleAdd"
           >添加商品</el-button
         >
         <el-button :icon="Delete" plain @click="$router.push('/goods/recycle')"
@@ -111,10 +111,11 @@
         </el-table-column>
         <el-table-column label="操作" width="240" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button size="small" :icon="Edit" @click="handleEdit(row)"
+            <el-button v-if="canEdit" size="small" :icon="Edit" @click="handleEdit(row)"
               >编辑</el-button
             >
             <el-button
+              v-if="canToggle"
               size="small"
               :type="row.status === 1 ? 'warning' : 'success'"
               @click="handleToggleStatus(row)"
@@ -380,6 +381,7 @@ import {
   ArrowRight,
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
 import {
   getGoodsList,
   getGoodsSkus,
@@ -398,6 +400,11 @@ import {
 } from '@/api/goods'
 
 // ========== 分类 ==========
+const auth = useAuthStore()
+const canAdd = computed(() => auth.hasPermission('goods:add'))
+const canEdit = computed(() => auth.hasPermission('goods:edit'))
+const canToggle = computed(() => auth.hasPermission('goods:toggle'))
+
 const categories = ref<Category[]>([])
 
 const fetchCategories = async () => {
