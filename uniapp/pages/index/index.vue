@@ -27,7 +27,7 @@
   <view v-else class="page">
     <swiper class="banner-swiper" :indicator-dots="true" :autoplay="true" :interval="3000" :duration="500"
       :circular="true" indicator-color="rgba(255,255,255,0.4)" indicator-active-color="#ffffff">
-      <swiper-item v-for="banner in banners" :key="banner.id">
+      <swiper-item v-for="banner in banners" :key="banner.id" @tap="handleBannerTap(banner)">
         <image :src="IMG_BASE + banner.image_url" mode="aspectFill" class="banner-image"></image>
       </swiper-item>
     </swiper>
@@ -121,6 +121,12 @@ function formatPrice(val) {
   if (val === null || val === undefined) return '--'
   const num = Number(val)
   return Number.isInteger(num) ? num.toFixed(0) : num.toFixed(2)
+}
+
+const handleBannerTap = (banner) => {
+  if (banner.fruit_id) {
+    uni.navigateTo({ url: `/pages/goods-detail/goods-detail?id=${banner.fruit_id}` })
+  }
 }
 
 const handleCategoryTap = (cat) => {
