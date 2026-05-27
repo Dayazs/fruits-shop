@@ -54,22 +54,16 @@
               <el-icon><document /></el-icon>
               <span>订单列表</span>
             </el-menu-item>
-            <el-menu-item index="order-refund">
+            <!-- <el-menu-item index="order-refund">
               <el-icon><money /></el-icon>
               <span>退款管理</span>
-            </el-menu-item>
+            </el-menu-item> -->
           </el-sub-menu>
 
-          <el-sub-menu index="user">
-            <template #title>
-              <el-icon><user /></el-icon>
-              <span>用户管理</span>
-            </template>
-            <el-menu-item index="user-list">
-              <el-icon><avatar /></el-icon>
-              <span>用户列表</span>
-            </el-menu-item>
-          </el-sub-menu>
+          <el-menu-item index="/user">
+            <el-icon><user /></el-icon>
+            <template #title>用户管理</template>
+          </el-menu-item>
 
           <!-- <el-sub-menu index="marketing">
             <template #title>
@@ -106,17 +100,15 @@
       <el-container class="layout-main">
         <el-header class="layout-header">
           <div class="header-left">
-            <el-icon
-              class="collapse-btn"
-              :size="22"
-              @click="toggleCollapse"
-            >
+            <el-icon class="collapse-btn" :size="22" @click="toggleCollapse">
               <fold v-if="!isCollapse" />
               <expand v-else />
             </el-icon>
             <el-breadcrumb separator="/">
               <!-- <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item> -->
-              <el-breadcrumb-item v-if="breadcrumbTitle">{{ breadcrumbTitle }}</el-breadcrumb-item>
+              <el-breadcrumb-item v-if="breadcrumbTitle">{{
+                breadcrumbTitle
+              }}</el-breadcrumb-item>
             </el-breadcrumb>
           </div>
           <div class="header-right">
@@ -128,7 +120,9 @@
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+                  <el-dropdown-item command="logout" divided
+                    >退出登录</el-dropdown-item
+                  >
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -158,7 +152,6 @@ import {
   Document,
   Money,
   User,
-  Avatar,
   Present,
   Discount,
   PictureFilled,
@@ -264,7 +257,7 @@ const handleCommand = async (command: string) => {
 }
 
 .collapse-btn:hover {
-  color: #409EFF;
+  color: #409eff;
 }
 
 .header-right {
