@@ -16,17 +16,18 @@
           active-text-color="#409EFF"
           router
         >
+          <!-- 首页：所有登录管理员均可访问 -->
           <el-menu-item index="/dashboard">
             <el-icon><home-filled /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
 
-          <el-menu-item index="/banner">
+          <el-menu-item v-if="authStore.hasPermission('dashboard')" index="/banner">
             <el-icon><picture-filled /></el-icon>
             <template #title>轮播图管理</template>
           </el-menu-item>
 
-          <el-sub-menu index="goods">
+          <el-sub-menu v-if="authStore.hasPermission('goods')" index="goods">
             <template #title>
               <el-icon><goods /></el-icon>
               <span>商品管理</span>
@@ -45,7 +46,7 @@
             </el-menu-item>
           </el-sub-menu>
 
-          <el-sub-menu index="order">
+          <el-sub-menu v-if="authStore.hasPermission('order')" index="order">
             <template #title>
               <el-icon><tickets /></el-icon>
               <span>订单管理</span>
@@ -60,7 +61,7 @@
             </el-menu-item> -->
           </el-sub-menu>
 
-          <el-menu-item index="/user">
+          <el-menu-item v-if="authStore.hasPermission('admin')" index="/user">
             <el-icon><user /></el-icon>
             <template #title>用户管理</template>
           </el-menu-item>
@@ -80,16 +81,16 @@
             </el-menu-item>
           </el-sub-menu> -->
 
-          <el-sub-menu index="system">
+          <el-sub-menu v-if="authStore.hasPermission('admin')" index="system">
             <template #title>
               <el-icon><setting /></el-icon>
               <span>系统设置</span>
             </template>
-            <el-menu-item index="admin-list">
+            <el-menu-item index="/admin">
               <el-icon><user-filled /></el-icon>
               <span>管理员列表</span>
             </el-menu-item>
-            <el-menu-item index="role">
+            <el-menu-item index="/role">
               <el-icon><lock /></el-icon>
               <span>角色管理</span>
             </el-menu-item>
