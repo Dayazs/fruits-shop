@@ -99,7 +99,8 @@
 		computed
 	} from 'vue'
 	import {
-		onLoad
+		onLoad,
+			onShareAppMessage
 	} from '@dcloudio/uni-app'
 	import {
 		homeApi,
@@ -139,6 +140,10 @@
 		return goods.value.skus.slice(0, 4)
 	})
 
+	onShareAppMessage(() => ({
+		title: goods.value?.name || '水果商城',
+		path: `/pages/goods-detail/goods-detail?id=${goods.value?.id || ''}`,
+	}))
 	onLoad((options) => {
 		refreshCartCount()
 		if (options && options.id) {

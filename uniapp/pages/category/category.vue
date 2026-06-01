@@ -72,7 +72,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow, onShareAppMessage } from '@dcloudio/uni-app'
 import CustomTabBar from '@/components/custom-tab-bar.vue'
 import { homeApi, userApi, IMG_BASE } from '@/utils/api.js'
 import { refreshCartCount, requireLogin } from '@/stores/cart.js'
@@ -83,6 +83,10 @@ const activeCatId = ref(null)
 const goodsList = ref([])
 const searchKeyword = ref('')
 
+	onShareAppMessage(() => ({
+		title: '水果商城 - 新鲜分类',
+		path: '/pages/category/category',
+	}))
 onLoad(async () => {
   try {
     const res = await homeApi.getCategories()

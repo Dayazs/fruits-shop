@@ -73,7 +73,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage } from '@dcloudio/uni-app'
 import CustomTabBar from '@/components/custom-tab-bar.vue'
 import { homeApi, userApi, IMG_BASE } from '@/utils/api.js'
 import { refreshCartCount, requireLogin } from '@/stores/cart.js'
@@ -82,6 +82,11 @@ const loading = ref(true)
 const banners = ref([])
 const topCategories = ref([])
 const specialCategories = ref([])
+
+onShareAppMessage(() => ({
+  title: '水果商城 - 新鲜水果直达',
+  path: '/pages/index/index',
+}))
 
 onLoad(async () => {
   try {
