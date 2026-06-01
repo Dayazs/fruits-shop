@@ -24,5 +24,15 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    //     proxy: {
+    //   '/api': {
+    //     target: 'http://47.105.65.75:10040',
+    //     changeOrigin: true,
+    //   },
+    //   '/uploads': {
+    //     target: 'http://47.105.65.75:10040',
+    //     changeOrigin: true,
+    //   },
+    // },
   },
 })
