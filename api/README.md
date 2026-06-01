@@ -528,7 +528,7 @@ PATCH /api/order/admin/{orderId}/ship
 | PATCH | `/roles/:id` | 编辑角色 | admin 权限 |
 | DELETE | `/roles/:id` | 删除角色 | admin 权限 |
 
-> **权限说明**：管理员登录时 JWT 中注入 `permissions` 数组，`*` 为超级管理员通配符。`/admins` 和 `/roles` 路由需 `requirePermission('admin')` 中间件校验。
+> **权限说明**：管理员登录时 JWT 中注入 `permissions` 数组，`*` 为超级管理员通配符。子权限与父权限为**且关系**（如仅持有 `goods:add` 可添加商品但不可查看列表，需同时持有 `goods`），`requirePermission` 精确匹配单个权限值，不再有多值或逻辑。`/admins` 和 `/roles` 路由需 `requirePermission('admin')` 中间件校验。
 
 #### 管理员登录
 
@@ -719,7 +719,7 @@ DELETE /api/admin/roles/:id
 | `banner:edit` | 编辑 Banner | banner | 编辑轮播图 |
 | `banner:delete` | 删除 Banner | banner | 删除轮播图 |
 
-JWT payload 中注入 `permissions` 数组，`requirePermission` 中间件从 token 中直接读取，无需数据库查询。
+JWT payload 中注入 `permissions` 数组，`requirePermission` 中间件从 token 中直接读取，无需数据库查询。每个路由只检查一个权限值，子权限独立于父权限（如 `goods:add` 不代表拥有 `goods`），前端按钮显隐与后端接口校验使用相同的权限值。
 
 ---
 
