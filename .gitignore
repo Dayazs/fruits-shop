@@ -153,3 +153,9 @@ temp/
 *.ico
 *.webp
 *.bmp
+
+# 文件资源
+*.txt
+*.pem
+*.sql
+*.zip
